@@ -1,0 +1,12 @@
+Package: rcola
+Version: 0.0.0.9000
+Title: LLM-Based Sentiment and Stance Analysis with COLA Framework
+Description: An R package for sentiment and stance detection using the COLA (Collaborative rOle-infused LLM-based Agents) framework. Provides functions for single and batch text analysis with support for multiple language models via the ellmer package.
+Authors@R: person(given = "Andrej",
+       family = "Pawluczenko",
+       role = c("aut", "cre"),
+       email = "a.pawluczenko@gmail.com")
+License: CC BY 4.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
