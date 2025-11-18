@@ -1,65 +1,72 @@
----
-output: github_document
----
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
-
 
 # rcola
 
 <!-- badges: start -->
+
 [![R-CMD-check](https://github.com/Marwolaeth/rcola/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Marwolaeth/rcola/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/gh/Marwolaeth/rcola/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/rcola)
+[![Codecov test
+coverage](https://codecov.io/gh/Marwolaeth/rcola/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/rcola)
 <!-- badges: end -->
 
-The goal of rcola is to ...
+R package for sentiment and stance analysis using the COLA framework
+
+## Overview
+
+**rcola** is an R implementation of the COLA (**C**ollaborative
+r**O**le-infused **L**LM-based **A**gents – see Lan et al. (2024))
+framework for automated stance detection in texts. The package employs a
+three-stage collaborative approach where specialised LLM-based agents
+analyse texts from linguistic, domain-specific, and social perspectives
+to determine whether an author’s position is in favour, against, or
+neutral towards a given target.
 
 ## Installation
 
-You can install the development version of rcola from [GitHub](https://github.com/) with:
+You can install the development version of rcola from
+[GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("pak")
 pak::pak("Marwolaeth/rcola")
 ```
 
-## Documentation
-
-Full documentation website on: https://Marwolaeth.github.io/rcola
-
 ## Example
 
 This is a basic example which shows you how to solve a common problem:
 
-
 ``` r
 library(rcola)
-#> Error in library(rcola): there is no package called 'rcola'
-## basic example code
+library(ellmer)
+
+chat <- ellmer::chat_openai()
+
+tweet <- "The carbon tax is just another way for the government to control our lives and stifle economic growth. It's a job killer!"
+
+target <- "Climate Change is Real Concern"
+
+stance(
+    tweet,
+    target,
+    type = "statement",
+    chat_base = chat,
+    domain_role = "social commentator"
+)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## Requirements
 
+- R \>= 4.1.0
+- {ellmer} for LLM integration
+- API access to supported language models (OpenAI, Anthropic, etc.)
 
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
+## Citation & Attribution
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+This implementation is based on the COLA framework from:
 
-You can also embed plots, for example:
+> Lan, X., Gao, C., Jin, D., & Li, Y. (2024). Stance Detection with
+> Collaborative Role-Infused LLM-Based Agents. [arXiv
+> preprint](https://arxiv.org/abs/2310.10467)
 
-<div class="figure">
-<img src="man/figures/README-pressure-1.png" alt="plot of chunk pressure" width="100%" />
-<p class="caption">plot of chunk pressure</p>
-</div>
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+When using this package, please cite the original COLA paper.

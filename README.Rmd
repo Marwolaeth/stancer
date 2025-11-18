@@ -20,7 +20,11 @@ knitr::opts_chunk$set(
 [![Codecov test coverage](https://codecov.io/gh/Marwolaeth/rcola/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/rcola)
 <!-- badges: end -->
 
-The goal of rcola is to ...
+R package for sentiment and stance analysis using the COLA framework
+
+## Overview
+
+**rcola** is an R implementation of the COLA (**C**ollaborative r**O**le-infused **L**LM-based **A**gents – see Lan et al. (2024)) framework for automated stance detection in texts. The package employs a three-stage collaborative approach where specialised LLM-based agents analyse texts from linguistic, domain-specific, and social perspectives to determine whether an author's position is in favour, against, or neutral towards a given target.
 
 ## Installation
 
@@ -31,31 +35,39 @@ You can install the development version of rcola from [GitHub](https://github.co
 pak::pak("Marwolaeth/rcola")
 ```
 
-## Documentation
-
-Full documentation website on: https://Marwolaeth.github.io/rcola
-
 ## Example
 
 This is a basic example which shows you how to solve a common problem:
 
-```{r example}
+```{r example, eval=FALSE}
 library(rcola)
-## basic example code
+library(ellmer)
+
+chat <- ellmer::chat_openai()
+
+tweet <- "The carbon tax is just another way for the government to control our lives and stifle economic growth. It's a job killer!"
+
+target <- "Climate Change is Real Concern"
+
+stance(
+    tweet,
+    target,
+    type = "statement",
+    chat_base = chat,
+    domain_role = "social commentator"
+)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## Requirements
 
-```{r cars}
-summary(cars)
-```
+- R >= 4.1.0
+- {ellmer} for LLM integration
+- API access to supported language models (OpenAI, Anthropic, etc.)
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+## Citation & Attribution
 
-You can also embed plots, for example:
+This implementation is based on the COLA framework from:
 
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
+> Lan, X., Gao, C., Jin, D., & Li, Y. (2024). Stance Detection with Collaborative Role-Infused LLM-Based Agents. [arXiv preprint](https://arxiv.org/abs/2310.10467)
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+When using this package, please cite the original COLA paper.
