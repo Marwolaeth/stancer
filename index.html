@@ -70,7 +70,12 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The goal of rcola is to …</p>
+<p>R package for sentiment and stance analysis using the COLA framework</p>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p><strong>rcola</strong> is an R implementation of the COLA (<strong>C</strong>ollaborative r<strong>O</strong>le-infused <strong>L</strong>LM-based <strong>A</strong>gents – see Lan et al. (2024)) framework for automated stance detection in texts. The package employs a three-stage collaborative approach where specialised LLM-based agents analyse texts from linguistic, domain-specific, and social perspectives to determine whether an author’s position is in favour, against, or neutral towards a given target.</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -80,36 +85,44 @@
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"Marwolaeth/rcola"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
-</h2>
-<p>Full documentation website on: <a href="https://Marwolaeth.github.io/rcola" class="external-link uri">https://Marwolaeth.github.io/rcola</a></p>
-</div>
-<div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
 <p>This is a basic example which shows you how to solve a common problem:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Marwolaeth/rcola" class="external-link">rcola</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Error in library(rcola): there is no package called 'rcola'</span></span>
-<span><span class="co">## basic example code</span></span></code></pre></div>
-<p>What is special about using <code>README.Rmd</code> instead of just <code>README.md</code>? You can include R chunks like so:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">cars</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      speed           dist       </span></span>
-<span><span class="co">#&gt;  Min.   : 4.0   Min.   :  2.00  </span></span>
-<span><span class="co">#&gt;  1st Qu.:12.0   1st Qu.: 26.00  </span></span>
-<span><span class="co">#&gt;  Median :15.0   Median : 36.00  </span></span>
-<span><span class="co">#&gt;  Mean   :15.4   Mean   : 42.98  </span></span>
-<span><span class="co">#&gt;  3rd Qu.:19.0   3rd Qu.: 56.00  </span></span>
-<span><span class="co">#&gt;  Max.   :25.0   Max.   :120.00</span></span></code></pre></div>
-<p>You’ll still need to render <code>README.Rmd</code> regularly, to keep <code>README.md</code> up-to-date. <code>devtools::build_readme()</code> is handy for this.</p>
-<p>You can also embed plots, for example:</p>
-<div class="figure">
-<img src="reference/figures/README-pressure-1.png" alt="plot of chunk pressure" width="100%"><p class="caption">
-plot of chunk pressure
-</p>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu">chat_openai</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">tweet</span> <span class="op">&lt;-</span> <span class="st">"The carbon tax is just another way for the government to control our lives and stifle economic growth. It's a job killer!"</span></span>
+<span></span>
+<span><span class="va">target</span> <span class="op">&lt;-</span> <span class="st">"Climate Change is Real Concern"</span></span>
+<span></span>
+<span><span class="fu">stance</span><span class="op">(</span></span>
+<span>    <span class="va">tweet</span>,</span>
+<span>    <span class="va">target</span>,</span>
+<span>    type <span class="op">=</span> <span class="st">"statement"</span>,</span>
+<span>    chat_base <span class="op">=</span> <span class="va">chat</span>,</span>
+<span>    domain_role <span class="op">=</span> <span class="st">"social commentator"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>In that case, don’t forget to commit and push the resulting figure files, so they display on GitHub and CRAN.</p>
+<div class="section level2">
+<h2 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
+</h2>
+<ul>
+<li>R &gt;= 4.1.0</li>
+<li>{ellmer} for LLM integration</li>
+<li>API access to supported language models (OpenAI, Anthropic, etc.)</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="citation--attribution">Citation &amp; Attribution<a class="anchor" aria-label="anchor" href="#citation--attribution"></a>
+</h2>
+<p>This implementation is based on the COLA framework from:</p>
+<blockquote>
+<p>Lan, X., Gao, C., Jin, D., &amp; Li, Y. (2024). Stance Detection with Collaborative Role-Infused LLM-Based Agents. <a href="https://arxiv.org/abs/2310.10467" class="external-link">arXiv preprint</a></p>
+</blockquote>
+<p>When using this package, please cite the original COLA paper.</p>
 </div>
 </div>
   </div>
