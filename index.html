@@ -46,14 +46,7 @@
   <a href="news/index.html">Changelog</a>
 </li>
       </ul>
-<ul class="nav navbar-nav navbar-right">
-<li>
-  <a href="https://github.com/Marwolaeth/rcola/" class="external-link">
-    <span class="fab fa-github fa-lg"></span>
-
-  </a>
-</li>
-      </ul>
+<ul class="nav navbar-nav navbar-right"></ul>
 </div>
 <!--/.nav-collapse -->
   </div>
@@ -89,7 +82,7 @@
 </h2>
 <p>This is a basic example which shows you how to solve a common problem:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Marwolaeth/rcola" class="external-link">rcola</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">rcola</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu">chat_openai</span><span class="op">(</span><span class="op">)</span></span>
@@ -98,7 +91,7 @@
 <span></span>
 <span><span class="va">target</span> <span class="op">&lt;-</span> <span class="st">"Climate Change is Real Concern"</span></span>
 <span></span>
-<span><span class="fu">stance</span><span class="op">(</span></span>
+<span><span class="fu">llm_stance</span><span class="op">(</span></span>
 <span>    <span class="va">tweet</span>,</span>
 <span>    <span class="va">target</span>,</span>
 <span>    type <span class="op">=</span> <span class="st">"statement"</span>,</span>
@@ -111,7 +104,7 @@
 </h2>
 <ul>
 <li>R &gt;= 4.1.0</li>
-<li>{ellmer} for LLM integration</li>
+<li>{ellmer} &gt;= 0.4.0 for LLM integration</li>
 <li>API access to supported language models (OpenAI, Anthropic, etc.)</li>
 </ul>
 </div>
@@ -128,15 +121,7 @@
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
-    <div class="links">
-<h2 data-toc-skip>Links</h2>
-<ul class="list-unstyled">
-<li><a href="https://github.com/Marwolaeth/rcola/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/Marwolaeth/rcola/issues" class="external-link">Report a bug</a></li>
-</ul>
-</div>
-
-<div class="license">
+    <div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>
