@@ -20,7 +20,7 @@ If it is the first time you use {fusen}, after 'description', you can directly r
 
 ```{r development-load}
 # Load already included functions if relevant
-pkgload::load_all(export_all = FALSE)
+# pkgload::load_all(export_all = FALSE)
 ```
 
 # Include some data examples in your package
@@ -32,19 +32,6 @@ and `system.file()` to read it in your examples.
 
 - There already is a dataset in the "inst/" directory to be used in the examples below
 -->
-
-```{r development-dataset}
-# Run all this chunk in the console directly
-# There already is a dataset in the "inst/" directory
-# Make the dataset file available to the current Rmd during development
-pkgload::load_all(path = here::here(), export_all = FALSE)
-
-# You will be able to read your example data file in each of your function examples and tests as follows - see chunks below
-datafile <- system.file("nyc_squirrels_sample.csv", package = "rcola")
-nyc_squirrels <- read.csv(datafile, encoding = "UTF-8")
-
-nyc_squirrels
-```
 
 
 # The first function of the package: Calculate the median of a vector
@@ -64,7 +51,10 @@ After inflating the template
 -->
 
 ```{r development-function}
-# Prepare the code of your function here
+usethis::use_package('ellmer')
+usethis::use_package('yaml')
+usethis::use_package('glue')
+usethis::use_package('glue')
 ```
 
 ```{r function}

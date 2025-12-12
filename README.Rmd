@@ -49,7 +49,7 @@ tweet <- "The carbon tax is just another way for the government to control our l
 
 target <- "Climate Change is Real Concern"
 
-stance(
+llm_stance(
     tweet,
     target,
     type = "statement",

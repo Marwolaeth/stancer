@@ -1,0 +1,2303 @@
+---
+title: 'rcola: Collaborative Role-infused LLM-based Agents for Stance Detection'
+output: html_document
+editor_options: 
+chunk_output_type: console
+---
+
+```{r development, include=FALSE}
+library(testthat)
+library(cli)
+library(ellmer)
+library(yaml)
+```
+
+```{r description}
+fusen::fill_description(
+  pkg = here::here(),
+  fields = list(
+    Title = "LLM-based Sentiment and Stance Analysis with COLA Framework",
+    Description = "An R package for sentiment and stance detection using the COLA (Collaborative rOle-infused LLM-based Agents) framework. Provides functions for single and batch text analysis with support for multiple language models via the ellmer package.",
+    `Authors@R` = c(
+      person("Andrej", "Pawluczenko", email = "a.pawluczenko@gmail.com", role = c("aut", "cre"))
+    )
+  ),
+  overwrite = TRUE
+)
+# Define License with use_*_license()
+usethis::use_ccby_license()
+```
+
+# Introduction
+
+## Overview
+
+**rcola** is an R implementation of the COLA (**C**ollaborative r**O**Le-infused **L**LM-based **A**gents) framework for automated stance detection in texts. 
+
+The package employs a three-stage collaborative approach:
+
+1. **Stage 1: Parallel Analysis** — Specialised LLM-based agents (linguist, domain expert, social interpreter) analyse texts from their respective perspectives
+2. **Stage 2: Parallel Debates** — Agents debate their analyses to reach consensus
+3. **Stage 3: Parallel Judgment** — A judge agent synthesises the debate and produces final stance classification
+
+## Key Features
+
+- 🤖 Multi-perspective analysis using collaborative LLM agents
+- 🌍 Support for multiple languages
+- 📊 Multiple stance scales (categorical, numeric, Likert)
+- 🎯 Domain-specific analysis with custom roles
+- 📈 Batch processing for data frames
+- 🔍 Detailed inspection tools for results
+
+## Quick Example
+
+```r
+
+```
+
+---
+
+# Utility Functions
+
+## Text Truncation
+
+```{r function-truncate}
+#' Truncate numeric values to a range
+#'
+#' Constrains numeric values to fall within the range [a, b].
+#' Values below a are set to a, values above b are set to b.
+#'
+#' @param x Numeric vector to truncate
+#' @param a Numeric. Lower bound (minimum value)
+#' @param b Numeric. Upper bound (maximum value)
+#'
+#' @return Numeric vector with values constrained to [a, b]
+#' @keywords internal
+#'
+#' @examples
+#' truncate(c(-1, 0, 5, 10), a = 0, b = 5)
+#' # Returns: 0, 0, 5, 5
+
+truncate <- function(x, a, b) {
+    if (!is.numeric(x)) {
+        cli::cli_abort("{.arg x} must be numeric")
+    }
+    if (!is.numeric(a)) {
+        cli::cli_abort("{.arg a} must be numeric")
+    }
+    if (!is.numeric(b)) {
+        cli::cli_abort("{.arg b} must be numeric")
+    }
+    
+    pmin(pmax(x, a), b)
+}
+```
+
+```{r tests-truncate}
+# Test 1: Basic functionality - values within range
+test_that('truncate returns values unchanged when within range', {
+    expect_equal(truncate(3, a = 0, b = 5), 3)
+    expect_equal(truncate(c(1, 2, 3), a = 0, b = 5), c(1, 2, 3))
+})
+
+# Test 2: Values below lower bound
+test_that('truncate sets values below a to a', {
+    expect_equal(truncate(-1, a = 0, b = 5), 0)
+    expect_equal(truncate(c(-5, -1, 0), a = 0, b = 5), c(0, 0, 0))
+})
+
+# Test 3: Values above upper bound
+test_that('truncate sets values above b to b', {
+    expect_equal(truncate(10, a = 0, b = 5), 5)
+    expect_equal(truncate(c(5, 6, 10), a = 0, b = 5), c(5, 5, 5))
+})
+
+# Test 4: Mixed values (below, within, above)
+test_that('truncate handles mixed values correctly', {
+    expect_equal(
+        truncate(c(-1, 0, 3, 5, 10), a = 0, b = 5),
+        c(0, 0, 3, 5, 5)
+    )
+})
+
+# Test 5: Negative ranges
+test_that('truncate works with negative ranges', {
+    expect_equal(truncate(c(-10, -5, 0), a = -8, b = -2), c(-8, -5, -2))
+})
+
+# Test 6: Single value at boundaries
+test_that('truncate handles boundary values', {
+    expect_equal(truncate(0, a = 0, b = 5), 0)
+    expect_equal(truncate(5, a = 0, b = 5), 5)
+})
+
+# Test 7: Vectorized operation
+test_that('truncate is vectorized', {
+    x <- c(-10, -5, 0, 5, 10, 15)
+    result <- truncate(x, a = 0, b = 10)
+    expect_equal(result, c(0, 0, 0, 5, 10, 10))
+})
+
+# Test 8: Floating point values
+test_that('truncate works with floating point numbers', {
+    expect_equal(truncate(3.5, a = 0, b = 5), 3.5)
+    expect_equal(truncate(-0.5, a = 0, b = 5), 0)
+    expect_equal(truncate(5.5, a = 0, b = 5), 5)
+})
+
+# Test 9: Very large and very small numbers
+test_that('truncate handles extreme values', {
+    expect_equal(truncate(1e10, a = 0, b = 100), 100)
+    expect_equal(truncate(-1e10, a = 0, b = 100), 0)
+})
+
+# Test 10: Zero as bound
+test_that('truncate works with zero as bound', {
+    expect_equal(truncate(c(-5, 0, 5), a = 0, b = 10), c(0, 0, 5))
+    expect_equal(truncate(c(-5, 0, 5), a = -10, b = 0), c(-5, 0, 0))
+})
+
+# Test 11: Equal bounds (a == b)
+test_that('truncate works when a equals b', {
+    expect_equal(truncate(c(-5, 0, 5), a = 3, b = 3), c(3, 3, 3))
+})
+
+# Test 12: Reversed bounds (a > b) - should still work with pmin/pmax
+test_that('truncate handles reversed bounds', {
+    # pmin and pmax will handle this gracefully
+    result <- truncate(5, a = 10, b = 0)
+    expect_equal(result, 0)
+})
+
+# Test 13: Empty vector
+test_that('truncate handles empty vectors', {
+    expect_equal(truncate(numeric(0), a = 0, b = 5), numeric(0))
+})
+
+# Test 14: NA values are preserved
+test_that('truncate preserves NA values', {
+    result <- truncate(c(1, NA, 3), a = 0, b = 5)
+    expect_equal(result[1], 1)
+    expect_true(is.na(result[2]))
+    expect_equal(result[3], 3)
+})
+
+# Test 15: Inf values
+test_that('truncate handles infinite values', {
+    expect_equal(truncate(Inf, a = 0, b = 5), 5)
+    expect_equal(truncate(-Inf, a = 0, b = 5), 0)
+})
+
+# Error handling: x is not numeric
+test_that('truncate rejects non-numeric x', {
+    expect_error(truncate("text", a = 0, b = 5), 'must be numeric')
+    expect_error(truncate(TRUE, a = 0, b = 5), 'must be numeric')
+    expect_error(truncate(list(1, 2), a = 0, b = 5), 'must be numeric')
+})
+
+# Error handling: a is not numeric
+test_that('truncate rejects non-numeric a', {
+    expect_error(truncate(5, a = "zero", b = 5), 'must be numeric')
+    expect_error(truncate(5, a = list(0), b = 5), 'must be numeric')
+})
+
+# Error handling: b is not numeric
+test_that('truncate rejects non-numeric b', {
+    expect_error(truncate(5, a = 0, b = "five"), 'must be numeric')
+    expect_error(truncate(5, a = 0, b = list(5)), 'must be numeric')
+})
+
+# Error handling: all three are non-numeric
+test_that('truncate rejects multiple non-numeric arguments', {
+    expect_error(truncate("x", a = "a", b = "b"), 'must be numeric')
+})
+
+# Error handling: NULL values
+test_that('truncate rejects NULL values', {
+    expect_error(truncate(NULL, a = 0, b = 5), 'must be numeric')
+    expect_error(truncate(5, a = NULL, b = 5), 'must be numeric')
+    expect_error(truncate(5, a = 0, b = NULL), 'must be numeric')
+})
+```
+
+## Error Handling
+
+```{r function-abort}
+#' Abort with formatted error message
+#'
+#' @param ... Arguments passed to cli::cli_abort()
+#'
+#' @return Throws error
+#' @keywords internal
+
+abort <- function(msg) {
+    cli::cli_abort(
+        msg,
+        call = rlang::expr(llm_stance()),
+        .envir = rlang::caller_env()
+    )
+}
+```
+
+```{r tests-abort}
+# Test 1: abort throws an error
+test_that('abort throws an error', {
+    expect_error(abort("Test error message"))
+})
+
+# Test 2: abort with simple string message
+test_that('abort with simple string message', {
+    expect_error(
+        abort("This is an error"),
+        "This is an error"
+    )
+})
+
+# Test 3: abort with cli formatting - .arg
+test_that('abort with .arg formatting', {
+    expect_error(
+        abort("{.arg x} must be numeric"),
+        "must be numeric"
+    )
+})
+
+# Test 4: abort with cli formatting - .val
+test_that('abort with .val formatting', {
+    expect_error(
+        abort("Invalid value: {.val {5}}"),
+        "Invalid value"
+    )
+})
+
+# Test 5: abort with cli formatting - .cls
+test_that('abort with .cls formatting', {
+    expect_error(
+        abort("Expected {.cls character}, got {.cls numeric}"),
+        "Expected"
+    )
+})
+
+# Test 6: abort with multiple cli formatting elements
+test_that('abort with multiple formatting elements', {
+    expect_error(
+        abort(
+            "Argument {.arg x} must be {.cls numeric}, not {.cls list}"
+        ),
+        "must be"
+    )
+})
+
+# Test 7: abort with interpolation - variable substitution
+test_that('abort with variable interpolation', {
+    var_name <- "test_var"
+    expect_error(
+        abort("Variable '{var_name}' not found"),
+        "test_var"
+    )
+})
+
+# Test 8: abort with complex interpolation
+test_that('abort with complex interpolation', {
+    lang <- "en"
+    expect_error(
+        abort("Language '{lang}' not available"),
+        "Language 'en' not available"
+    )
+})
+
+# Test 9: abort preserves error class
+test_that('abort creates rlang_error', {
+    expect_error(
+        abort("Test error"),
+        class = "rlang_error"
+    )
+})
+
+# Test 10: abort with empty message
+test_that('abort with empty message', {
+    expect_error(abort(""))
+})
+
+# Test 11: abort with very long message
+test_that('abort with long message', {
+    long_msg <- paste(rep("a", 1000), collapse = "")
+    expect_error(abort(long_msg))
+})
+
+# Test 12: abort with special characters
+test_that('abort with special characters', {
+    expect_error(
+        abort("Error with special chars: @#$%^&*()"),
+        "special chars"
+    )
+})
+
+# Test 13: abort with quotes in message
+test_that('abort with quotes in message', {
+    expect_error(
+        abort('Error with "double" and \'single\' quotes'),
+        "quotes"
+    )
+})
+
+# Test 14: abort with newlines in message
+test_that('abort with newlines', {
+    expect_error(
+        abort("First line\nSecond line"),
+        "First line"
+    )
+})
+
+# Test 15: abort with list formatting
+test_that('abort with list formatting', {
+    expect_error(
+        abort("Available options: {.val {c('a', 'b', 'c')}}"),
+        "Available"
+    )
+})
+
+# Test 16: abort with vector in message
+test_that('abort with vector interpolation', {
+    vals <- c("x", "y", "z")
+    expect_error(
+        abort("Invalid values: {.val {vals}}"),
+        "Invalid"
+    )
+})
+
+# Test 17: abort with numeric values in message
+test_that('abort with numeric interpolation', {
+    n <- 111
+    expect_error(
+        abort("Expected {n} items, got 0"),
+        "Expected 111"
+    )
+})
+
+# Test 18: abort with logical values in message
+test_that('abort with logical values', {
+    flag <- TRUE
+    expect_error(
+        abort("Flag is {flag}"),
+        "Flag is TRUE"
+    )
+})
+
+# Test 19: abort with NA values
+test_that('abort with NA values', {
+    na_val <- NA
+    expect_error(
+        abort("Value is {na_val}"),
+        "Value"
+    )
+})
+
+# Test 20: abort with function name in message
+test_that('abort with function reference', {
+    expect_error(
+        abort("Function {.fn truncate} failed"),
+        "failed"
+    )
+})
+
+# Test 21: abort uses caller environment
+test_that('abort uses caller environment', {
+    test_var <- "from_caller"
+    expect_error(
+        abort("Variable: {test_var}"),
+        "from_caller"
+    )
+})
+
+# Test 22: abort in nested function call
+test_that('abort in nested function', {
+    inner_func <- function() {
+        abort("Error from inner function")
+    }
+    
+    outer_func <- function() {
+        inner_func()
+    }
+    
+    expect_error(
+        outer_func(),
+        "Error from inner function"
+    )
+})
+
+# Test 23: abort does not return value (throws immediately)
+test_that('abort does not return', {
+    result <- tryCatch(
+        {
+            abort("Test")
+            "should not reach here"
+        },
+        error = function(e) {
+            "caught error"
+        }
+    )
+    expect_equal(result, "caught error")
+})
+
+# Test 24: abort with .arg and variable
+test_that('abort with .arg and variable name', {
+    param_name <- "data"
+    expect_error(
+        abort("Argument {.arg {param_name}} is invalid"),
+        "invalid"
+    )
+})
+
+# Test 25: abort with .cls and actual class
+test_that('abort with .cls and object class', {
+    obj <- list(a = 1)
+    expect_error(
+        abort("Expected data.frame, got {.cls {class(obj)}}"),
+        "Expected"
+    )
+})
+
+# Test 26: abort with multiple .val elements
+test_that('abort with multiple .val elements', {
+    expect_error(
+        abort(
+            "Got {.val {1}}, expected one of {.val {c(2, 3, 4)}}"
+        ),
+        "Got"
+    )
+})
+
+# Test 27: abort preserves message formatting
+test_that('abort message is not modified', {
+    msg <- "Exact error message"
+    tryCatch(
+        abort(msg),
+        error = function(e) {
+            expect_true(grepl(msg, conditionMessage(e)))
+        }
+    )
+})
+
+# Test 28: abort called multiple times creates different errors
+test_that('multiple abort calls create separate errors', {
+    error1 <- tryCatch(
+        abort("Error 1"),
+        error = function(e) e
+    )
+    
+    error2 <- tryCatch(
+        abort("Error 2"),
+        error = function(e) e
+    )
+    
+    expect_true(grepl("Error 1", conditionMessage(error1)))
+    expect_true(grepl("Error 2", conditionMessage(error2)))
+    expect_false(identical(error1, error2))
+})
+
+# Test 29: abort with complex nested formatting
+test_that('abort with complex nested formatting', {
+    lang <- "en"
+    available <- c("en", "ru", "fr")
+    expect_error(
+        abort(
+            "Language '{lang}' not available. Use: {.val {available}}"
+        ),
+        "not available"
+    )
+})
+
+# Test 30: abort requires exactly one argument
+test_that('abort requires msg argument', {
+    expect_error(abort(), "missing")
+})
+
+# Test 31: abort with NULL message
+test_that('abort with NULL message', {
+    expect_error(abort(NULL), 'must be supplied')
+})
+
+# Test 32: abort with numeric message (coerced to string)
+test_that('abort with numeric message', {
+    expect_error(
+        abort(123),
+        "123"
+    )
+})
+
+# Test 33: abort with expression in message
+test_that('abort with expression evaluation', {
+    x <- 5
+    y <- 3
+    expect_error(
+        abort("Sum is {x + y}"),
+        "Sum is 8"
+    )
+})
+
+# Test 34: abort message with unicode characters
+test_that('abort with unicode characters', {
+    expect_error(
+        abort("Hello \U1F680"),
+        "Hello"
+    )
+})
+```
+
+## Expression Catching
+
+```{r function-catch}
+#' Safely evaluate expression and catch errors
+#'
+#' @param expr Expression to evaluate
+#' @param expr_name Name of expression for error messages
+#'
+#' @return Result of expression or throws an error
+#' @keywords internal
+
+catch <- function(
+        expr,
+        expr_name = paste(deparse(substitute(expr)), collapse = '')
+) {
+    if (!rlang::is_scalar_character(expr_name)) {
+        cli::cli_abort(
+            "{.arg expr_name} must be a character scalar.
+            Got {.cls {class(expr_name)}}"
+        )
+    }
+    
+    rlang::try_fetch(
+        expr,
+        error = function(e) {
+            abort("Error in {expr_name}: {e$message}")
+        }
+    )
+}
+```
+
+```{r tests-catch}
+# Test 1: catch executes expression successfully
+test_that('catch executes expression without error', {
+    expect_no_error(catch(1 + 1))
+})
+
+# Test 2: catch with variable assignment
+test_that('catch evaluates expression with variables', {
+    x <- 5
+    result <- catch(x * 2)
+    expect_equal(result, 10)
+})
+
+# Test 3: catch with function call
+test_that('catch executes function call', {
+    result <- catch(sqrt(16))
+    expect_equal(result, 4)
+})
+
+# Test 4: catch catches errors and wraps them
+test_that('catch catches error and wraps message', {
+    expect_error(
+        catch(stop("Original error")),
+        "Error in"
+    )
+})
+
+# Test 5: catch preserves original error message
+test_that('catch preserves original error message', {
+    expect_error(
+        catch(stop("Original error")),
+        "Original error"
+    )
+})
+
+# Test 6: catch with custom expr_name
+test_that('catch with custom expr_name parameter', {
+    expect_error(
+        catch(stop("Test"), expr_name = "custom_operation"),
+        "Error in custom_operation"
+    )
+})
+
+# Test 7: catch with default expr_name from deparse
+test_that('catch uses deparse(substitute(expr)) for default name', {
+    expect_error(
+        catch(1 / "1"),
+        "Error in 1"
+    )
+})
+
+# Test 8: catch rejects non-character expr_name
+test_that('catch rejects non-character expr_name', {
+    expect_error(
+        catch(1 + 1, expr_name = 123),
+        "must be a character scalar"
+    )
+})
+
+# Test 9: catch rejects non-scalar character expr_name
+test_that('catch rejects non-scalar character expr_name', {
+    expect_error(
+        catch(1 + 1, expr_name = c("a", "b")),
+        "must be a character scalar"
+    )
+})
+
+# Test 10: catch with complex expression
+test_that('catch evaluates complex expression', {
+    result <- catch({
+        x <- 10
+        y <- 20
+        x + y
+    })
+    expect_equal(result, 30)
+})
+
+# Test 11: catch with error in nested function call
+test_that('catch catches error in nested function', {
+    expect_error(
+        catch(sqrt(as.numeric(sqrt("NA")))),
+        "Error in"
+    )
+})
+
+# Test 12: catch with NULL expr_name throws error
+test_that('catch rejects NULL expr_name', {
+    expect_error(
+        catch(1 + 1, expr_name = NULL),
+        "must be a character scalar"
+    )
+})
+
+# Test 13: catch with empty string expr_name
+test_that('catch accepts empty string expr_name', {
+    result <- catch(1 + 1, expr_name = "")
+    expect_equal(result, 2)
+})
+```
+
+## Input Validation
+
+```{r function-validate_inputs}
+#' Validate input length
+#'
+#' @param inputs Input vector
+#' @param expected_length Expected length
+#' @param input_name Informative name for error messages
+#'
+#' @return Invisibly TRUE or throws error
+#' @keywords internal
+
+validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
+    if (!rlang::is_scalar_character(input_name)) {
+        cli::cli_abort("{.arg input_name} must be a character scalar.")
+    }
+    
+    if (is.null(inputs) || length(inputs) != expected_length) {
+        abort("{input_name} returned unexpected results")
+    }
+    
+    invisible(TRUE)
+}
+```
+
+```{r tests-validate_inputs}
+# Test 1: validate_inputs returns TRUE invisibly for valid inputs
+test_that('validate_inputs returns TRUE invisibly for valid inputs', {
+    result <- validate_inputs(c(1, 2, 3), expected_length = 3)
+    expect_true(result)
+    expect_invisible(validate_inputs(c(1, 2, 3), expected_length = 3))
+})
+
+# Test 2: validate_inputs with matching length
+test_that('validate_inputs accepts inputs with matching length', {
+    expect_invisible(validate_inputs(list(a = 1, b = 2), expected_length = 2))
+})
+
+# Test 3: validate_inputs rejects NULL inputs
+test_that('validate_inputs rejects NULL inputs', {
+    expect_error(
+        validate_inputs(NULL, expected_length = 1),
+        "returned unexpected results"
+    )
+})
+
+# Test 4: validate_inputs rejects mismatched length
+test_that('validate_inputs rejects mismatched length', {
+    expect_error(
+        validate_inputs(c(1, 2, 3), expected_length = 2),
+        "returned unexpected results"
+    )
+})
+
+# Test 5: validate_inputs with custom input_name in error message
+test_that('validate_inputs includes custom input_name in error', {
+    expect_error(
+        validate_inputs(c(1, 2), expected_length = 3, input_name = "Results"),
+        "Results returned unexpected results"
+    )
+})
+
+# Test 6: validate_inputs rejects non-character input_name
+test_that('validate_inputs rejects non-character input_name', {
+    expect_error(
+        validate_inputs(c(1, 2, 3), expected_length = 3, input_name = 123),
+        "must be a character scalar"
+    )
+})
+
+# Test 7: validate_inputs rejects non-scalar character input_name
+test_that('validate_inputs rejects non-scalar character input_name', {
+    expect_error(
+        validate_inputs(c(1, 2, 3), expected_length = 3, input_name = c("a", "b")),
+        "must be a character scalar"
+    )
+})
+
+# Test 8: validate_inputs with empty vector
+test_that('validate_inputs rejects empty vector when expecting non-zero length', {
+    expect_error(
+        validate_inputs(c(), expected_length = 1),
+        "returned unexpected results"
+    )
+})
+```
+
+```{r function-validate_character}
+#' Validate a character argument
+#'
+#' @param x Input to validate
+#'
+#' @return Invisibly TRUE or throws error
+#' @keywords internal
+
+validate_character <- function(x) {
+    arg_name <- deparse(substitute(x))
+    
+    if (!rlang::is_character(x)) {
+        abort(
+            "{.arg {arg_name}} must be a character vector, got {.cls {class(x)}}"
+        )
+    }
+    if (length(x) == 0) {
+        abort("{.arg {arg_name}} cannot be empty")
+    }
+    if (any(is.na(x)) || any(ellmer:::trim(x) == '')) {
+        abort(
+            c(
+                "{.arg {arg_name}} contains empty strings.",
+                "i" = "consider removing them before analysis."
+            )
+        )
+    }
+    
+    invisible(TRUE)
+}
+```
+
+```{r tests-validate_character}
+# Test 1: validate_character accepts valid character vector
+test_that('validate_character accepts valid character vector', {
+    result <- validate_character(c("text1", "text2"))
+    expect_true(result)
+    expect_invisible(validate_character(c("text1", "text2")))
+})
+
+# Test 2: validate_character accepts single character string
+test_that('validate_character accepts single character string', {
+    expect_invisible(validate_character("single text"))
+})
+
+# Test 3: validate_character rejects non-character input
+test_that('validate_character rejects numeric input', {
+    expect_error(
+        validate_character(123),
+        "must be a character vector"
+    )
+})
+
+# Test 4: validate_character rejects logical input
+test_that('validate_character rejects logical input', {
+    expect_error(
+        validate_character(TRUE),
+        "must be a character vector"
+    )
+})
+
+# Test 5: validate_character rejects list input
+test_that('validate_character rejects list input', {
+    expect_error(
+        validate_character(list("a", "b")),
+        "must be a character vector"
+    )
+})
+
+# Test 6: validate_character rejects empty character vector
+test_that('validate_character rejects empty vector', {
+    expect_error(
+        validate_character(character()),
+        "cannot be empty"
+    )
+})
+
+# Test 7: validate_character rejects vector with NA values
+test_that('validate_character rejects vector with NA', {
+    expect_error(
+        validate_character(c("text", NA, "more")),
+        "contains empty strings"
+    )
+})
+
+# Test 8: validate_character rejects vector with empty strings
+test_that('validate_character rejects vector with empty strings', {
+    expect_error(
+        validate_character(c("text", "", "more")),
+        "contains empty strings"
+    )
+})
+
+# Test 9: validate_character rejects vector with whitespace-only strings
+test_that('validate_character rejects whitespace-only strings', {
+    expect_error(
+        validate_character(c("text", "   ", "more")),
+        "contains empty strings"
+    )
+})
+
+# Test 10: validate_character includes argument name in error message
+test_that('validate_character includes arg name in error', {
+    my_text <- 123
+    expect_error(
+        validate_character(my_text),
+        "my_text"
+    )
+})
+
+# Test 11: validate_character with mixed whitespace and empty
+test_that('validate_character rejects mixed empty and whitespace', {
+    expect_error(
+        validate_character(c("valid", "\t", "\n")),
+        "contains empty strings"
+    )
+})
+
+# Test 12: validate_character accepts vector with special characters
+test_that('validate_character accepts special characters', {
+    expect_invisible(
+        validate_character(c("text@123", "привіт", "\U1F680 emoji"))
+    )
+})
+
+# Test 13: validate_character error message includes info about removal
+test_that('validate_character error includes removal suggestion', {
+    expect_error(
+        validate_character(c("text", NA)),
+        "consider removing them"
+    )
+})
+```
+
+```{r function-validate_stage}
+#' Validate stage configuration
+#'
+#' @param x Stage configuration
+#' @param stage_name Name of stage for error messages
+#'
+#' @return Unmodified `x` or throws an error
+#' @keywords internal
+
+validate_stage <- function(x, stage_name) {
+    if (is.null(x)) {
+        abort("{stage_name} returned NULL")
+    }
+    x
+}
+```
+
+```{r tests-validate_stage}
+# Test 1: validate_stage returns input unchanged when not NULL
+test_that('validate_stage returns input unchanged', {
+    input <- list(a = 1, b = 2)
+    result <- validate_stage(input, stage_name = "Processing")
+    expect_identical(result, input)
+})
+
+# Test 2: validate_stage rejects NULL input
+test_that('validate_stage rejects NULL input', {
+    expect_error(
+        validate_stage(NULL, stage_name = "MyStage"),
+        "MyStage returned NULL"
+    )
+})
+```
+
+## Argument Recycling
+
+```{r function-recycle_arg}
+#' Recycle argument to specified length
+#'
+#' @param arg Values to recycle
+#' @param n Target length
+#'
+#' @return Recycled argument values
+#' @keywords internal
+
+recycle_arg <- function(arg, n) {
+    arg_name <- deparse(substitute(arg))
+    
+    if (length(arg) == 1) {
+        return(rep(arg, n))
+    } else if (length(arg) == n) {
+        return(arg)
+    } else {
+        abort(
+            "{.arg {arg_name}} must have length 1 or {n} (same as {.arg text}). \\
+            Got {length(arg)}."
+        )
+    }
+}
+```
+
+```{r tests-recycle_arg}
+# Test 1: recycle_arg replicates single value to length n
+test_that('recycle_arg replicates single value', {
+    result <- recycle_arg("x", n = 3)
+    expect_equal(result, c("x", "x", "x"))
+})
+
+# Test 2: recycle_arg returns unchanged vector of length n
+test_that('recycle_arg returns vector of matching length', {
+    input <- c("a", "b", "c")
+    result <- recycle_arg(input, n = 3)
+    expect_identical(result, input)
+})
+
+# Test 3: recycle_arg rejects vector with mismatched length
+test_that('recycle_arg rejects mismatched length', {
+    expect_error(
+        recycle_arg(c("a", "b"), n = 3),
+        "must have length 1 or 3"
+    )
+})
+
+# Test 4: recycle_arg includes argument name in error message
+test_that('recycle_arg includes arg name in error', {
+    my_vector <- c(1, 2, 3, 4)
+    expect_error(
+        recycle_arg(my_vector, n = 2),
+        "my_vector"
+    )
+})
+```
+
+## Timing
+
+```{r function-stage_complete}
+#' Format timing message
+#'
+#' @param tic Start time
+#' @param toc End time
+#' @param msg Message prefix
+#'
+#' @return Formatted timing message
+#' @keywords internal
+
+stage_complete <- function(tic, toc, msg) {
+    tocmsg <- paste0(round(toc - tic, 3), " seconds elapsed")
+    
+    if (is.null(msg) || is.na(msg) || length(msg) == 0) {
+        outmsg <- tocmsg
+    } else {
+        outmsg <- glue::glue('\u2705 {msg} complete – {tocmsg}\n\n')
+    }
+    outmsg
+}
+```
+
+```{r tests-stage_complete}
+# Test 1: stage_complete returns elapsed time when msg is NULL
+test_that('stage_complete returns elapsed time for NULL msg', {
+    result <- stage_complete(tic = 0, toc = 1.5, msg = NULL)
+    expect_equal(result, "1.5 seconds elapsed")
+})
+
+# Test 2: stage_complete returns elapsed time when msg is NA
+test_that('stage_complete returns elapsed time for NA msg', {
+    result <- stage_complete(tic = 0, toc = 2.345, msg = NA)
+    expect_equal(result, "2.345 seconds elapsed")
+})
+
+# Test 3: stage_complete formats message with checkmark and time
+test_that('stage_complete formats message with checkmark', {
+    result <- stage_complete(tic = 0, toc = 1, msg = "Processing")
+    expect_match(result, "\u2705 Processing complete – 1 seconds elapsed")
+})
+
+# Test 4: stage_complete rounds elapsed time to 3 decimal places
+test_that('stage_complete rounds time to 3 decimals', {
+    result <- stage_complete(tic = 0, toc = 1.23456, msg = "Test")
+    expect_match(result, "1.235 seconds elapsed")
+})
+```
+
+---
+
+# Translations and Localization
+
+## Load Translations
+
+```{r function-load_translations}
+#' Load translation dictionary
+#'
+#' @return List containing translations for all supported languages
+#' @keywords internal
+
+load_translations <- function() {
+    # yaml_file <- system.file("i18n/translations.yaml", package = "rcola")
+    yaml_file <- here::here("inst/i18n/translations.yaml")
+    rlang::try_fetch(
+        yaml::read_yaml(yaml_file),
+        error = function(e) cli::cli_abort("Tranlsations not found.")
+    )
+}
+```
+
+```{r tests-load_translations}
+test_that('load_translations is a function', {
+    expect_true(inherits(load_translations, 'function'))
+})
+
+test_that('load_translations works', {
+    expect_no_error(dict <- load_translations())
+    expect_is(dict, 'list')
+    expect_named(dict, c('en', 'uk', 'ru'))
+})
+```
+
+## Available Languages
+
+```{r function-rcola_available_languages}
+#' Get available languages for rcola
+#'
+#' @return Character vector of supported language codes
+#' @export
+
+rcola_available_languages <- function() {
+    names(load_translations())
+}
+```
+
+```{r examples-rcola_available_languages}
+rcola_available_languages()
+```
+
+```{r tests-rcola_available_languages}
+test_that('rcola_available_languages is a function', {
+    expect_true(inherits(rcola_available_languages, 'function'))
+})
+
+test_that('load_translations works', {
+    expect_no_error(rcola_available_languages())
+    expect_is(rcola_available_languages(), 'character')
+    expect_equal(rcola_available_languages(), c('en', 'uk', 'ru'))
+})
+```
+
+## Localization Helper
+
+```{r function-l}
+#' Get localised string
+#'
+#' @param language Target language code
+#' @param caption_id Translation key
+#' @param case Optional second level key (e.g., 'gen', 'dat', 'likert')
+#'
+#' @return Character string with translation
+#' @keywords internal
+
+l <- function(language, caption_id, case = NULL) {
+    # Check lanuage
+    if (!language %in% rcola_available_languages()) {
+        abort(
+            "Language '{language}' not available. \\
+            Use: {.val {rcola_available_languages()}}"
+        )
+    }
+    
+    dict <- load_translations()
+    
+    # Проверка ключа
+    if (!caption_id %in% names(dict[[language]])) {
+        cli::cli_abort(
+            "Caption ID '{caption_id}' not found ",
+            "in language '{language}'"
+        )
+    }
+    
+    translation <- dict[[language]][[caption_id]]
+    
+    if (!is.null(case)) {
+        case <- rlang::arg_match(
+            case,
+            c('gen', 'dat', 'categorical', 'numeric', 'likert'),
+            multiple = FALSE
+        )
+        
+        if (!is.list(translation)) {
+            cli::cli_abort(
+                "Case '{case}' not supported for '{caption_id}' ",
+                "(expected list with cases)"
+            )
+        }
+        
+        if (!case %in% names(translation)) {
+            cli::cli_abort(
+                "Case '{case}' not found for '{caption_id}'"
+            )
+        }
+        
+        translation[[case]]
+    } else {
+        if (is.list(translation)) {
+            cli::cli_abort(
+                "Case required for '{caption_id}'. ",
+                "Available: {.val {names(translation)}}"
+            )
+        }
+        
+        translation
+    }
+}
+```
+
+```{r tests-l}
+# Test 1: l() returns simple string translation without case
+test_that('l() returns simple string translation', {
+    result <- l(language = "en", caption_id = "analysis")
+    expect_equal(result, "Text analysis for")
+    expect_type(result, "character")
+})
+
+# Test 2: l() returns translation with case parameter
+test_that('l() returns translation with case', {
+    result <- l(language = "en", caption_id = "object", case = "gen")
+    expect_equal(result, "the object")
+})
+
+# Test 3: l() rejects invalid language
+test_that('l() rejects invalid language', {
+    expect_error(
+        l(language = "fr", caption_id = "analysis"),
+        "Language 'fr' not available"
+    )
+})
+
+# Test 4: l() rejects invalid caption_id
+test_that('l() rejects invalid caption_id', {
+    expect_error(
+        l(language = "en", caption_id = "nonexistent"),
+        "Caption ID 'nonexistent' not found"
+    )
+})
+
+# Test 5: l() rejects invalid case value
+test_that('l() rejects invalid case value', {
+    expect_error(
+        l(language = "en", caption_id = "object", case = "invalid"),
+        "must be one of"
+    )
+})
+
+# Test 6: l() requires case for dictionary entries with cases
+test_that('l() requires case for multi-case entries', {
+    expect_error(
+        l(language = "en", caption_id = "object"),
+        "Case required for 'object'"
+    )
+})
+
+# Test 7: l() rejects case for simple string entries
+test_that('l() rejects case for simple string entries', {
+    expect_error(
+        l(language = "en", caption_id = "analysis", case = "gen"),
+        "Case 'gen' not supported for 'analysis'"
+    )
+})
+
+# Test 8: l() rejects missing case in multi-case entry
+test_that('l() rejects missing case in entry', {
+    expect_error(
+        l(language = "en", caption_id = "stance_positive", case = "ablative"),
+        "must be one of"
+    )
+})
+
+# Test 9: l() works with different languages
+test_that('l() works with Ukrainian translation', {
+    result <- l(language = "uk", caption_id = "analysis")
+    expect_equal(result, "Аналіз тексту для")
+})
+
+# Test 10: l() works with Russian translation
+test_that('l() works with Russian translation', {
+    result <- l(language = "ru", caption_id = "stage_1")
+    expect_equal(result, "Проведение многомерного анализа")
+})
+
+# Test 11: l() returns correct case variant
+test_that('l() returns correct case variant for different cases', {
+    gen <- l(language = "en", caption_id = "statement", case = "gen")
+    dat <- l(language = "en", caption_id = "statement", case = "dat")
+    expect_equal(gen, "the statement")
+    expect_equal(dat, "the following statement:")
+    expect_true(gen != dat)
+})
+
+# Test 12: l() works with numeric case type
+test_that('l() works with numeric case type', {
+    result <- l(language = "en", caption_id = "stance_positive", case = "numeric")
+    expect_equal(result, "positive, near 1")
+})
+
+# Test 13: l() works with likert case type
+test_that('l() works with likert case type', {
+    result <- l(language = "ru", caption_id = "stance_neutral", case = "likert")
+    expect_equal(result, "нейтральная")
+})
+```
+
+## Check Translations
+
+```{r function-rcola_check_translations}
+#' Check translation dictionary structure
+#'
+#' @description
+#' Validates and displays information about the translation dictionary,
+#' including available languages, number of keys, and keys with case variants.
+#' Useful for verifying translation completeness and structure.
+#'
+#' @details
+#' This function performs the following checks:
+#' - Lists all available languages in the dictionary
+#' - Counts total translation keys per language
+#' - Identifies keys with case variants (e.g., 'gen', 'dat', 'likert')
+#'
+#' The function prints a formatted report to the console and returns
+#' invisibly TRUE.
+#'
+#' @return
+#' Invisibly `TRUE`. Called for side effects (printing to console).
+#'
+#' @examples
+#' \dontrun{
+#'   rcola_check_translations()
+#'   # Available languages: en, uk, ru
+#'   # 
+#'   # Language: en
+#'   #   Keys: 13
+#'   #   Keys with cases: 5
+#'   # 
+#'   # Language: uk
+#'   #   Keys: 13
+#'   #   Keys with cases: 5
+#'   # 
+#'   # Language: ru
+#'   #   Keys: 13
+#'   #   Keys with cases: 5
+#' }
+#'
+#' @keywords internal
+#' @export
+
+rcola_check_translations <- function() {
+    dict <- load_translations()
+    
+    cat("Available languages:", paste(names(dict), collapse = ", "), "\n\n")
+    
+    for (language in names(dict)) {
+        cat("Language:", language, "\n")
+        cat("  Keys:", length(dict[[language]]), "\n")
+        
+        # Проверка структуры
+        cases_keys <- sapply(dict[[language]], function(x) is.list(x))
+        if (any(cases_keys)) {
+            cat("  Keys with cases:", sum(cases_keys), "\n")
+        }
+        cat("\n")
+    }
+    
+    invisible(TRUE)
+}
+```
+
+```{r examples-rcola_check_translations}
+rcola_check_translations()
+```
+
+```{r tests-rcola_check_translations}
+test_that('rcola_check_translations returns invisibly TRUE', {
+    result <- rcola_check_translations()
+    expect_true(result)
+    expect_invisible(rcola_check_translations())
+})
+
+test_that('rcola_check_translations prints available languages', {
+    expect_output(
+        rcola_check_translations(),
+        "Available languages:"
+    )
+})
+
+test_that('rcola_check_translations lists all languages', {
+    expect_output(
+        rcola_check_translations(),
+        "en"
+    )
+    expect_output(
+        rcola_check_translations(),
+        "uk"
+    )
+    expect_output(
+        rcola_check_translations(),
+        "ru"
+    )
+})
+
+test_that('rcola_check_translations shows key count per language', {
+    expect_output(
+        rcola_check_translations(),
+        "Language: en"
+    )
+    expect_output(
+        rcola_check_translations(),
+        "Keys: \\d+"
+    )
+})
+
+test_that('rcola_check_translations identifies keys with cases', {
+    expect_output(
+        rcola_check_translations(),
+        "Keys with cases:"
+    )
+})
+
+test_that('rcola_check_translations output is consistent', {
+    output1 <- capture.output(rcola_check_translations())
+    output2 <- capture.output(rcola_check_translations())
+    expect_equal(output1, output2)
+})
+
+test_that('rcola_check_translations handles all languages equally', {
+    output <- capture.output(rcola_check_translations())
+    
+    # Проверяем, что каждый язык имеет свою секцию
+    en_count <- sum(grepl("Language: en", output))
+    uk_count <- sum(grepl("Language: uk", output))
+    ru_count <- sum(grepl("Language: ru", output))
+    
+    expect_equal(en_count, 1)
+    expect_equal(uk_count, 1)
+    expect_equal(ru_count, 1)
+})
+```
+
+## Type to Term Conversion
+
+```{r function-type_to_term}
+#' Convert analysis type to human-readable term
+#'
+#' @param type Analysis type: "object" or "statement"
+#' @param language Language code
+#'
+#' @return Character string with localised term
+#' @keywords internal
+
+type_to_term <- function(
+        type = c('object', 'statement'),
+        language = rcola_available_languages()
+) {
+    type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
+    language <- rlang::arg_match(language, rcola_available_languages(), multiple = FALSE)
+    
+    switch(
+        type,
+        object = l(language, 'object', 'dat'),
+        statement = l(language, 'statement', 'dat')
+    )
+}
+```
+
+```{r tests-type_to_term}
+# Test 1: type_to_term returns correct term for object type
+test_that('type_to_term returns object term in English', {
+    result <- type_to_term(type = "object", language = "en")
+    expect_equal(result, "the object")
+})
+
+# Test 2: type_to_term returns correct term for statement type
+test_that('type_to_term returns statement term in English', {
+    result <- type_to_term(type = "statement", language = "en")
+    expect_equal(result, "the following statement:")
+})
+
+# Test 3: type_to_term works with Ukrainian language
+test_that('type_to_term works with Ukrainian', {
+    result <- type_to_term(type = "object", language = "uk")
+    expect_equal(result, "об'єкту")
+})
+
+# Test 4: type_to_term works with Russian language
+test_that('type_to_term works with Russian', {
+    result <- type_to_term(type = "statement", language = "ru")
+    expect_equal(result, "суждению")
+})
+
+# Test 5: type_to_term rejects invalid type
+test_that('type_to_term rejects invalid type', {
+    expect_error(
+        type_to_term(type = "invalid", language = "en"),
+        "must be one of"
+    )
+})
+
+# Test 6: type_to_term rejects invalid language
+test_that('type_to_term rejects invalid language', {
+    expect_error(
+        type_to_term(type = "object", language = "fr"),
+        "must be one of"
+    )
+})
+
+# Test 7: type_to_term uses dative case (dat) for all terms
+test_that('type_to_term uses dative case', {
+    # Проверяем, что используется именно дательный падеж (dat), а не именительный (gen)
+    object_dat <- type_to_term(type = "object", language = "en")
+    # Для английского "the object" одинаков, но проверяем логику
+    expect_type(object_dat, "character")
+    expect_length(object_dat, 1)
+})
+
+# Test 8: type_to_term returns character string
+test_that('type_to_term returns character string', {
+    result <- type_to_term(type = "object", language = "en")
+    expect_type(result, "character")
+    expect_length(result, 1)
+})
+
+# Test 9: type_to_term works with all available languages
+test_that('type_to_term works with all available languages', {
+    available_langs <- rcola_available_languages()
+    
+    for (lang in available_langs) {
+        result_obj <- type_to_term(type = "object", language = lang)
+        result_stmt <- type_to_term(type = "statement", language = lang)
+        
+        expect_type(result_obj, "character")
+        expect_type(result_stmt, "character")
+        expect_length(result_obj, 1)
+        expect_length(result_stmt, 1)
+    }
+})
+
+# Test 10: type_to_term returns different terms for different types
+test_that('type_to_term returns different terms for different types', {
+    object_term <- type_to_term(type = "object", language = "en")
+    statement_term <- type_to_term(type = "statement", language = "en")
+    
+    expect_false(object_term == statement_term)
+})
+```
+
+---
+
+# Scale System
+
+## Scale Definitions
+
+```{r function-type_stance}
+#' Define stance scales for structured data extraction
+#'
+#' @description
+#' These functions define scale types for extracting stance information
+#' using `ellmer::parallel_chat_structured()`. They serve as scale definitions
+#' for the ellmer structured data extraction tool.
+#'
+#' @details
+#' These functions create type definitions compatible with ellmer's
+#' structured extraction framework:
+#'
+#' - `type_stance_categorical()`: Defines a three-point categorical scale
+#'   (Positive, Negative, Neutral)
+#' - `type_stance_numeric()`: Defines a continuous numeric scale
+#'   (typically -1 to 1)
+#' - `type_stance_likert()`: Defines a five-point Likert scale
+#'   (Strongly Disagree to Strongly Agree)
+#'
+#' Each function reads a description from a file using
+#' `ellmer::interpolate_file()`, allowing for dynamic content insertion
+#' and template rendering.
+#'
+#' @param description_file Path to a file containing the scale description.
+#'   The file may include template variables that will be interpolated
+#'   using `ellmer::interpolate_file()`.
+#'
+#' @return
+#' A type definition object compatible with `ellmer::parallel_chat_structured()`.
+#' - `type_stance_categorical()` returns an enum type with three values
+#' - `type_stance_numeric()` returns a numeric type
+#' - `type_stance_likert()` returns an enum type with five values
+#'
+#' @seealso
+#' [ellmer::parallel_chat_structured()] for using these type definitions
+#' in structured data extraction tasks.
+#'
+#' @examples
+#' \dontrun{
+#'   # Define scale types for stance extraction
+#'   categorical_scale <- type_stance_categorical("scales/categorical.txt")
+#'   numeric_scale <- type_stance_numeric("scales/numeric.txt")
+#'   likert_scale <- type_stance_likert("scales/likert.txt")
+#'
+#'   # Use in structured extraction
+#'   result <- ellmer::parallel_chat_structured(
+#'     chat = my_chat,
+#'     schema = list(
+#'       stance_cat = categorical_scale,
+#'       stance_num = numeric_scale,
+#'       stance_likert = likert_scale
+#'     )
+#'   )
+#' }
+#'
+#' @keywords internal
+#' @name type_stance
+
+#' @rdname type_stance
+type_stance_categorical <- function(description_file) {
+  ellmer::type_enum(
+      values = c('Positive', 'Negative', 'Neutral'),
+      description = ellmer::interpolate_file(description_file)
+  )
+}
+
+#' @rdname type_stance
+type_stance_numeric <- function(description_file) {
+  ellmer::type_number(
+      description = ellmer::interpolate_file(description_file)
+  )
+}
+
+#' @rdname type_stance
+type_stance_likert <- function(description_file) {
+  ellmer::type_enum(
+      values = c(
+          'Strongly Disagree',
+          'Disagree',
+          'Neutral',
+          'Agree',
+          'Strongly Agree'
+      ),
+      description = ellmer::interpolate_file(description_file)
+  )
+}
+```
+
+```{r tests-type_stance}
+prompts_dir <- here::here('inst', 'prompts', 'en')
+# prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+
+test_that('type_stance_categorical returns enum type', {
+    template_file <- file.path(prompts_dir, 'description-categorical.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_categorical(template_file)
+    expect_is(result, "ellmer::TypeEnum")
+})
+
+test_that('type_stance_categorical includes three values', {
+    template_file <- file.path(prompts_dir, 'description-categorical.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_categorical(template_file)
+    expect_equal(result@values, c('Positive', 'Negative', 'Neutral'))
+})
+
+test_that('type_stance_categorical loads description from file', {
+    template_file <- file.path(prompts_dir, 'description-categorical.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_categorical(template_file)
+    expect_type(result@description, "character")
+    expect_length(result@description, 1)
+    expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_numeric returns basic type', {
+    template_file <- file.path(prompts_dir, 'description-numeric.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_numeric(template_file)
+    expect_is(result, "ellmer::TypeBasic")
+})
+
+test_that('type_stance_numeric loads description from file', {
+    template_file <- file.path(prompts_dir, 'description-numeric.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_numeric(template_file)
+    expect_type(result@description, "character")
+    expect_length(result@description, 1)
+    expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_likert returns enum type', {
+    template_file <- file.path(prompts_dir, 'description-likert.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_likert(template_file)
+    expect_is(result, "ellmer::TypeEnum")
+})
+
+test_that('type_stance_likert includes five values', {
+    template_file <- file.path(prompts_dir, 'description-likert.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_likert(template_file)
+    expect_equal(
+        result@values,
+        c('Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree')
+    )
+})
+
+test_that('type_stance_likert loads description from file', {
+    template_file <- file.path(prompts_dir, 'description-likert.md')
+    skip_if_not(file.exists(template_file))
+    result <- type_stance_likert(template_file)
+    expect_type(result@description, "character")
+    expect_length(result@description, 1)
+    expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_categorical and likert have different values', {
+    cat_file <- file.path(prompts_dir, 'description-categorical.md')
+    likert_file <- file.path(prompts_dir, 'description-likert.md')
+    skip_if_not(file.exists(cat_file) && file.exists(likert_file))
+    
+    cat_result <- type_stance_categorical(cat_file)
+    likert_result <- type_stance_likert(likert_file)
+    
+    expect_length(cat_result@values, 3)
+    expect_length(likert_result@values, 5)
+    expect_false(cat_result@description == likert_result@description)
+})
+
+test_that('type_stance_categorical handles missing file', {
+    template_file <- file.path(prompts_dir, 'nonexistent.md')
+    skip_if(file.exists(template_file))
+    expect_error(
+        type_stance_categorical(template_file),
+        class = "error"
+    )
+})
+
+test_that('type_stance_numeric handles missing file', {
+    template_file <- file.path(prompts_dir, 'nonexistent.md')
+    skip_if(file.exists(template_file))
+    expect_error(
+        type_stance_numeric(template_file),
+        class = "error"
+    )
+})
+
+test_that('type_stance_likert handles missing file', {
+    template_file <- file.path(prompts_dir, 'nonexistent.md')
+    skip_if(file.exists(template_file))
+    expect_error(
+        type_stance_likert(template_file),
+        class = "error"
+    )
+})
+```
+
+```{r function-type_stance_analysis}
+#' Define analysis stance type
+#'
+#' @param language Language code
+#' @param scale Stance scale type
+#'
+#' @return List defining analysis stance scale
+#' @keywords internal
+
+type_stance_analysis <- function(language, scale) {
+# Implementation
+}
+```
+
+```{r tests-type_stance_analysis}
+test_that('type_stance_analysis is a function', {
+expect_true(inherits(type_stance_analysis, 'function'))
+})
+```
+
+---
+
+# Prompt and Task Preparation
+
+## Prompts
+
+```{r function-prompts_prepare}
+#' Prepare prompt templates
+#'
+#' @param role Agent role (linguist, domain, interpreter)
+#' @param templates Prompt templates
+#' @param language Language code
+#' @param add_reference_resolution Add reference resolution
+#' @param add_statement_resolution Add statement resolution
+#' @param ... Additional arguments
+#'
+#' @return Prepared prompts
+#' @keywords internal
+
+prompts_prepare <- function(
+  role,
+  templates,
+  language = rcola_available_languages(),
+  add_reference_resolution = FALSE,
+  add_statement_resolution = FALSE,
+  ...
+) {
+# Implementation
+}
+```
+
+```{r tests-prompts_prepare}
+test_that('prompts_prepare is a function', {
+expect_true(inherits(prompts_prepare, 'function'))
+})
+```
+
+## Tasks
+
+```{r function-tasks_validate}
+#' Validate task configuration
+#'
+#' @param tasks Task list
+#' @param expected_length Expected number of tasks
+#'
+#' @return Invisibly TRUE or throws error
+#' @keywords internal
+
+tasks_validate <- function(tasks, expected_length) {
+# Implementation
+}
+```
+
+```{r tests-tasks_validate}
+test_that('tasks_validate is a function', {
+expect_true(inherits(tasks_validate, 'function'))
+})
+```
+
+```{r function-tasks_prepare}
+#' Prepare tasks for execution
+#'
+#' @param chat_base Base chat configuration
+#' @param prompts Prepared prompts
+#' @param n_texts Number of texts
+#'
+#' @return Prepared tasks
+#' @keywords internal
+
+tasks_prepare <- function(chat_base, prompts, n_texts) {
+# Implementation
+}
+```
+
+```{r tests-tasks_prepare}
+test_that('tasks_prepare is a function', {
+expect_true(inherits(tasks_prepare, 'function'))
+})
+```
+
+---
+
+# Expert Analysis
+
+## Prepare Expert Chats
+
+```{r function-prepare_expert_chats}
+#' Prepare chat configurations for expert agents
+#'
+#' @param inputs Input texts
+#' @param chat_base Base chat configuration
+#' @param expert_role Expert role (linguist, domain, interpreter)
+#'
+#' @return List of chat configurations
+#' @keywords internal
+
+prepare_expert_chats <- function(
+  inputs,
+  chat_base,
+  expert_role = c("linguist", "domain", "interpreter")
+) {
+# Implementation
+}
+```
+
+```{r tests-prepare_expert_chats}
+test_that('prepare_expert_chats is a function', {
+expect_true(inherits(prepare_expert_chats, 'function'))
+})
+```
+
+## Execute Role
+
+```{r function-execute_role}
+#' Execute expert role analysis
+#'
+#' @param expert_role Expert role
+#' @param inputs Input texts
+#' @param chat_base Chat configuration
+#' @param info Additional information
+#' @param rpm Requests per minute limit
+#' @param verbose Show progress messages
+#'
+#' @return Analysis results
+#' @keywords internal
+
+execute_role <- function(
+  expert_role,
+  inputs,
+  chat_base,
+  info,
+  rpm = 500,
+  verbose = TRUE
+) {
+# Implementation
+}
+```
+
+```{r tests-execute_role}
+test_that('execute_role is a function', {
+expect_true(inherits(execute_role, 'function'))
+})
+```
+
+---
+
+# Debate Stage
+
+## Prepare Debater Chats
+
+```{r function-prepare_debater_chats}
+#' Prepare chat configurations for debate agents
+#'
+#' @param stance Initial stance analysis
+#' @param inputs Input texts
+#' @param chat_base Base chat configuration
+#'
+#' @return List of chat configurations
+#' @keywords internal
+
+prepare_debater_chats <- function(stance, inputs, chat_base) {
+# Implementation
+}
+```
+
+```{r tests-prepare_debater_chats}
+test_that('prepare_debater_chats is a function', {
+expect_true(inherits(prepare_debater_chats, 'function'))
+})
+```
+
+---
+
+# Judgment Stage
+
+## Prepare Judger Chats
+
+```{r function-prepare_judger_chats}
+#' Prepare chat configurations for judge agent
+#'
+#' @param inputs Input texts
+#' @param chat_base Base chat configuration
+#'
+#' @return List of chat configurations
+#' @keywords internal
+
+prepare_judger_chats <- function(inputs, chat_base) {
+# Implementation
+}
+```
+
+```{r tests-prepare_judger_chats}
+test_that('prepare_judger_chats is a function', {
+expect_true(inherits(prepare_judger_chats, 'function'))
+})
+```
+
+---
+
+# Pipeline Stages
+
+## Stage 1: Parallel Analysis
+
+```{r function-stage_1_parallel_analysis}
+#' Execute Stage 1: Parallel expert analysis
+#'
+#' @param inputs Input texts
+#' @param chat_base Chat configuration
+#' @param verbose Show progress
+#' @param rpm Requests per minute limit
+#'
+#' @return Analysis results
+#' @keywords internal
+
+stage_1_parallel_analysis <- function(
+  inputs,
+  chat_base,
+  verbose = TRUE,
+  rpm = 500
+) {
+# Implementation
+}
+```
+
+```{r tests-stage_1_parallel_analysis}
+test_that('stage_1_parallel_analysis is a function', {
+expect_true(inherits(stage_1_parallel_analysis, 'function'))
+})
+```
+
+## Stage 2: Parallel Debates
+
+```{r function-stage_2_parallel_debates}
+#' Execute Stage 2: Parallel agent debates
+#'
+#' @param inputs Input texts
+#' @param chat_base Chat configuration
+#' @param verbose Show progress
+#' @param rpm Requests per minute limit
+#'
+#' @return Debate results
+#' @keywords internal
+
+stage_2_parallel_debates <- function(
+  inputs,
+  chat_base,
+  verbose = TRUE,
+  rpm = 500
+) {
+# Implementation
+}
+```
+
+```{r tests-stage_2_parallel_debates}
+test_that('stage_2_parallel_debates is a function', {
+expect_true(inherits(stage_2_parallel_debates, 'function'))
+})
+```
+
+## Stage 3: Parallel Judgment
+
+```{r function-stage_3_parallel_judgment}
+#' Execute Stage 3: Judge synthesis
+#'
+#' @param inputs Input texts
+#' @param chat_base Chat configuration
+#' @param verbose Show progress
+#' @param rpm Requests per minute limit
+#' @param ... Additional arguments
+#'
+#' @return Final stance judgments
+#' @keywords internal
+
+stage_3_parallel_judgment <- function(
+  inputs,
+  chat_base,
+  verbose = TRUE,
+  rpm = 500,
+  ...
+) {
+# Implementation
+}
+```
+
+```{r tests-stage_3_parallel_judgment}
+test_that('stage_3_parallel_judgment is a function', {
+expect_true(inherits(stage_3_parallel_judgment, 'function'))
+})
+```
+
+---
+
+# Main Analysis Function
+
+## LLM Stance Detection
+
+```{r function-llm_stance}
+#' Detect stance using COLA framework
+#'
+#' @param text Input text(s)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return stance_result object
+#' @export
+
+llm_stance <- function(text, ...) {
+UseMethod("llm_stance")
+}
+```
+
+```{r function-llm_stance.character}
+#' Stance detection for character vectors
+#'
+#' @param text Character vector of texts
+#' @param target Target entity or statement
+#' @param chat_base Chat model configuration
+#' @param type Analysis type: "object" or "statement"
+#' @param language Language code
+#' @param scale Stance scale: "categorical", "numeric", or "likert"
+#' @param domain_role Optional domain-specific role
+#' @param prompts_dir Optional custom prompts directory
+#' @param verbose Show progress messages
+#' @param rpm Requests per minute limit
+#' @param ... Additional arguments
+#'
+#' @return stance_result object
+#' @export
+
+llm_stance.character <- function(
+  text,
+  target,
+  chat_base,
+  type = c("object", "statement"),
+  language = rcola_available_languages(),
+  scale = c("categorical", "numeric", "likert"),
+  domain_role = NULL,
+  prompts_dir = NULL,
+  verbose = TRUE,
+  rpm = 20,
+  ...
+) {
+# Implementation
+}
+```
+
+```{r examples-llm_stance.character}
+# Example usage would go here
+# result <- llm_stance(
+#   text = "I support renewable energy",
+#   target = "renewable energy",
+#   chat_base = chat_model,
+#   type = "object",
+#   scale = "categorical"
+# )
+```
+
+```{r tests-llm_stance.character}
+test_that('llm_stance.character is a function', {
+expect_true(inherits(llm_stance.character, 'function'))
+})
+```
+
+```{r function-llm_stance.data.frame}
+#' Stance detection for data frames
+#'
+#' @param data Input data frame
+#' @param text Column name containing texts
+#' @param target Column name or vector of targets
+#' @param type Analysis type
+#' @param domain_role Optional domain role
+#' @param language Language code
+#' @param chat_base Chat model configuration
+#' @param scale Stance scale
+#' @param prompts_dir Optional custom prompts directory
+#' @param verbose Show progress
+#' @param rpm Requests per minute limit
+#' @param .output_col Name of output column
+#' @param ... Additional arguments
+#'
+#' @return Data frame with stance results
+#' @export
+
+llm_stance.data.frame <- function(
+  data,
+  text,
+  target,
+  type = NULL,
+  domain_role = NULL,
+  language = NULL,
+  chat_base,
+  scale = "categorical",
+  prompts_dir = NULL,
+  verbose = TRUE,
+  rpm = 20,
+  .output_col = ".stance",
+  ...
+) {
+# Implementation
+}
+```
+
+```{r examples-llm_stance.data.frame}
+# Example usage would go here
+# results <- llm_stance(
+#   data = tweets_df,
+#   text = "text",
+#   target = "climate_change",
+#   chat_base = chat_model
+# )
+```
+
+```{r tests-llm_stance.data.frame}
+test_that('llm_stance.data.frame is a function', {
+expect_true(inherits(llm_stance.data.frame, 'function'))
+})
+```
+
+---
+
+# Result Inspection and Display
+
+## Print Method
+
+```{r function-print.stance_result}
+#' Print stance_result object
+#'
+#' @param x stance_result object
+#' @param ... Additional arguments
+#'
+#' @return Invisibly x
+#' @export
+
+print.stance_result <- function(x, ...) {
+# Implementation
+}
+```
+
+```{r examples-print.stance_result}
+# result <- llm_stance(...)
+# print(result)
+```
+
+```{r tests-print.stance_result}
+test_that('print.stance_result is a function', {
+expect_true(inherits(print.stance_result, 'function'))
+})
+```
+
+## Summary Method
+
+```{r function-summary.stance_result}
+#' Summarize stance_result object
+#'
+#' @param object stance_result object
+#' @param ... Additional arguments
+#'
+#' @return Invisibly object
+#' @export
+
+summary.stance_result <- function(object, ...) {
+# Implementation
+}
+```
+
+```{r examples-summary.stance_result}
+# result <- llm_stance(...)
+# summary(result)
+```
+
+```{r tests-summary.stance_result}
+test_that('summary.stance_result is a function', {
+expect_true(inherits(summary.stance_result, 'function'))
+})
+```
+
+## Data Frame Conversion
+
+```{r function-as.data.frame.stance_result}
+#' Convert stance_result to data frame
+#'
+#' @param x stance_result object
+#' @param row.names Optional row names
+#' @param optional Logical
+#' @param ... Additional arguments
+#'
+#' @return Data frame
+#' @export
+
+as.data.frame.stance_result <- function(
+  x,
+  row.names = NULL,
+  optional = FALSE,
+  ...
+) {
+# Implementation
+}
+```
+
+```{r examples-as.data.frame.stance_result}
+# result <- llm_stance(...)
+# df <- as.data.frame(result)
+```
+
+```{r tests-as.data.frame.stance_result}
+test_that('as.data.frame.stance_result is a function', {
+expect_true(inherits(as.data.frame.stance_result, 'function'))
+})
+```
+
+## Inspect Method
+
+```{r function-inspect}
+#' Inspect stance_result contents
+#'
+#' @param x stance_result object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Invisibly x
+#' @export
+
+inspect <- function(x, ...) {
+UseMethod("inspect")
+}
+```
+
+```{r function-inspect.stance_result}
+#' Inspect stance_result object details
+#'
+#' @param x stance_result object
+#' @param what Primary inspection level: 'metadata', 'analysis', or 'debates'
+#' @param within Secondary inspection level
+#' @param index Row index to inspect
+#'
+#' @return Invisibly x
+#' @export
+
+inspect.stance_result <- function(
+  x,
+  what = c('metadata', 'analysis', 'debates'),
+  within = NULL,
+  index = 1
+) {
+# Implementation
+}
+```
+
+```{r examples-inspect.stance_result}
+# result <- llm_stance(...)
+# inspect(result, what = 'metadata')
+# inspect(result, what = 'analysis', within = 'linguistic_analysis')
+# inspect(result, what = 'debates', within = 'counterarguments', index = 1)
+```
+
+```{r tests-inspect.stance_result}
+test_that('inspect.stance_result is a function', {
+expect_true(inherits(inspect.stance_result, 'function'))
+})
+```
+
+---
+
+# Inflate
+
+```{r development-inflate, eval=FALSE}
+fusen::inflate(
+flat_file = 'dev/flat_rcola.Rmd',
+codecov = TRUE,
+clean = TRUE
+)
+```

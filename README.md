@@ -46,7 +46,7 @@ tweet <- "The carbon tax is just another way for the government to control our l
 
 target <- "Climate Change is Real Concern"
 
-stance(
+llm_stance(
     tweet,
     target,
     type = "statement",
@@ -58,7 +58,7 @@ stance(
 ## Requirements
 
 - R \>= 4.1.0
-- {ellmer} for LLM integration
+- {ellmer} >= 0.4.0 for LLM integration
 - API access to supported language models (OpenAI, Anthropic, etc.)
 
 ## Citation & Attribution
