@@ -1997,27 +1997,213 @@ test_that('type_stance_analysis works with all scale types', {
 ## Prompts
 
 ```{r function-prompts_prepare}
-#' Prepare prompt templates
+#' Prepare system and user prompts for a given role
 #'
-#' @param role Agent role (linguist, domain, interpreter)
-#' @param templates Prompt templates
-#' @param language Language code
-#' @param add_reference_resolution Add reference resolution
-#' @param add_statement_resolution Add statement resolution
-#' @param ... Additional arguments
+#' @description
+#' Loads and interpolates system and user prompt templates for a specific role
+#' in the stance analysis workflow. This function prepares the prompts that
+#' guide the language model's behaviour for different analysis stages.
 #'
-#' @return Prepared prompts
+#' @details
+#' The function supports five distinct roles in the stance analysis pipeline:
+#'
+#' - **linguist**: Performs linguistic analysis of statements
+#' - **domain**: Provides domain-specific expertise and context
+#' - **interpreter**: Interprets and clarifies statements
+#' - **debater**: Presents arguments and counter-arguments
+#' - **judger**: Makes final stance judgements (supports additional options)
+#'
+#' For the `judger` role, additional instructions can be included:
+#' - `add_reference_resolution`: Include instructions for resolving references
+#' - `add_statement_resolution`: Include instructions for resolving statements
+#'
+#' The function performs the following operations:
+#' 1. Validates the role and language parameters
+#' 2. Loads template files for the specified role
+#' 3. Interpolates templates with provided variables (via `...`)
+#' 4. Validates that prompts are non-empty after interpolation
+#'
+#' Templates are loaded using `ellmer::interpolate_file()`, which allows
+#' for dynamic content insertion and template variable rendering.
+#'
+#' @param role Role for which to prepare prompts. One of:
+#'   - `"linguist"`: Linguistic analysis
+#'   - `"domain"`: Domain expertise
+#'   - `"interpreter"`: Statement interpretation
+#'   - `"debater"`: Argument presentation
+#'   - `"judger"`: Final judgement
+#'
+#' @param templates A list containing template file paths. Expected keys:
+#'   - `system-{role}`: Path to system prompt template
+#'   - `user-{role}`: Path to user prompt template
+#'   - `reference_resolution`: Path to reference resolution instructions (for judger)
+#'   - `statement_resolution`: Path to statement resolution instructions (for judger)
+#'   - `scale_guide`: Path to scale guide (for judger)
+#'
+#' @param language Language code for localisation (e.g., "en", "uk", "ru").
+#'   Defaults to the first available language. Must be one of the available
+#'   languages in the rcola translation dictionary.
+#'
+#' @param add_reference_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving references in statements.
+#'   Defaults to `FALSE`.
+#'
+#' @param add_statement_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving statements.
+#'   Defaults to `FALSE`.
+#'
+#' @param ... Additional named arguments passed to `ellmer::interpolate_file()`.
+#'   These allow for template variable substitution (e.g., `target = "climate change"`).
+#'
+#' @return
+#' A list with two elements:
+#' - `system`: Character string containing the system prompt
+#' - `task`: Character string containing the user prompt
+#'
+#' Both strings are non-empty after interpolation.
+#'
+#' @seealso
+#' [ellmer::interpolate_file()] for template interpolation details.
+#'
+#' @examples
+#' \dontrun{
+#'   # Prepare prompts for linguistic analysis
+#'   templates <- list(
+#'     `system-linguist` = "inst/prompts/en/system-linguist.md",
+#'     `user-linguist` = "inst/prompts/en/user-linguist.md"
+#'   )
+#'
+#'   prompts <- prompts_prepare(
+#'     role = "linguist",
+#'     templates = templates,
+#'     language = "en",
+#'     target = "climate change",
+#'     text = c("some text", "and more"),
+#'     target_type = "the object"
+#'   )
+#'
+#'   # Prepare prompts for domain expert
+#'   templates <- list(
+#'     `system-domain` = "inst/prompts/en/system-domain.md",
+#'     `user-domain` = "inst/prompts/en/user-domain.md"
+#'   )
+#'
+#'   prompts <- prompts_prepare(
+#'     role = "domain",
+#'     templates = templates,
+#'     language = "en",
+#'     target = "artificial intelligence",
+#'     text = "AI will replace all human jobs",
+#'     target_type = "the object",
+#'     domain = "technology and employment expert"
+#'   )
+#'
+#'   # Prepare prompts for judger with additional options
+#'   templates <- list(
+#'     `system-judger` = "inst/prompts/en/system-judger.md",
+#'     `user-judger` = "inst/prompts/en/user-judger.md",
+#'     reference_resolution = "inst/prompts/en/reference-resolution.md",
+#'     statement_resolution = "inst/prompts/en/statement-resolution.md",
+#'     scale_guide = "inst/prompts/en/guide-likert.md"
+#'   )
+#'
+#'   prompts <- prompts_prepare(
+#'     role = "judger",
+#'     templates = templates,
+#'     language = "en",
+#'     add_reference_resolution = TRUE,
+#'     add_statement_resolution = TRUE,
+#'     target = "Climate change is a real concern",
+#'     text = "Global warming is a serious threat",
+#'     target_type = "the statement",
+#'     FavourResponse = "This text is almost a paraphrase of the target statement",
+#'     AgainstResponse = "This is most probably a parody of climate speeches.",
+#'     NeutralResponse = "Context is missing and we should be sceptical" 
+#'   )
+#' }
+#'
 #' @keywords internal
-
 prompts_prepare <- function(
-  role,
-  templates,
-  language = rcola_available_languages(),
-  add_reference_resolution = FALSE,
-  add_statement_resolution = FALSE,
-  ...
+      role,
+      templates,
+      language = rcola_available_languages(),
+      add_reference_resolution = FALSE,
+      add_statement_resolution = FALSE,
+      ...
 ) {
-# Implementation
+  role <- rlang::arg_match(
+      role,
+      values = c('linguist', 'domain', 'interpreter', 'debater', 'judger'),
+      multiple = FALSE
+  )
+  language <- rlang::arg_match(
+    language,
+    rcola_available_languages(),
+    multiple = FALSE
+  )
+  
+  # A lot of work for a judger
+    if (role == 'judger') {
+        if (add_reference_resolution) {
+            reference_instruction <- ellmer::interpolate_file(
+                templates$reference_resolution
+            )
+        } else {
+            reference_instruction <- ''
+        }
+        
+        if (add_statement_resolution) {
+            statement_instruction <- ellmer::interpolate_file(
+                templates$statement_resolution
+            )
+        } else {
+            # Default settings
+            statement_instruction <- ''
+        }
+        
+        scale_guide <- ellmer::interpolate_file(templates$scale_guide)
+    }
+  
+  template_system <- templates[[glue::glue('system-{role}')]]
+  template_user <- templates[[glue::glue('user-{role}')]]
+  
+  # Check for file existence
+  if (!file.exists(template_system)) {
+      abort(
+          c(
+              "System template not found: {.file {template_system}}",
+              "i" = "Available roles: {.val linguist}, {.val domain}, {.val interpreter}, {.val debater}, {.val judger}"
+          )
+      )
+  }
+  if (!file.exists(template_user)) {
+      abort(
+          c(
+              "User template not found: {.file {template_user}}",
+              "i" = "Available roles: {.val linguist}, {.val domain}, {.val interpreter}, {.val debater}, {.val judger}"
+          )
+      )
+  }
+  
+  prompts <- list(
+      system = ellmer::interpolate_file(template_system, ...),
+      task = ellmer::interpolate_file(template_user, ...)
+  )
+  
+  # Check for user prompt existence
+  if (is.null(prompts$task)) {
+      abort("User prompt is NULL for role {.val {role}}")
+  }
+  
+  # Check for empty strings
+  if (any(nchar(prompts$system) == 0)) {
+      abort("System prompt is empty after interpolation for role {.val {role}}")
+  }
+  if (any(nchar(prompts$task) == 0)) {
+      abort("User prompt is empty after interpolation for role {.val {role}}")
+  }
+  
+  prompts
 }
 ```
 
