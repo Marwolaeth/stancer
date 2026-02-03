@@ -1552,19 +1552,18 @@ test_that('type_to_term returns different terms for different types', {
 #'
 #' @examples
 #' \dontrun{
+#'   # Initialise a `Chat` object
+#'   my_chat <- ellmer::chat_anthropic()
+#' 
 #'   # Define scale types for stance extraction
 #'   categorical_scale <- type_stance_categorical("scales/categorical.txt")
 #'   numeric_scale <- type_stance_numeric("scales/numeric.txt")
 #'   likert_scale <- type_stance_likert("scales/likert.txt")
 #'
 #'   # Use in structured extraction
-#'   result <- ellmer::parallel_chat_structured(
-#'     chat = my_chat,
-#'     schema = list(
-#'       stance_cat = categorical_scale,
-#'       stance_num = numeric_scale,
-#'       stance_likert = likert_scale
-#'     )
+#'   result <- my_chat$chat_structured(
+#'     "Some text",
+#'     type = likert_scale
 #'   )
 #' }
 #'
@@ -1711,23 +1710,283 @@ test_that('type_stance_likert handles missing file', {
 })
 ```
 
-```{r function-type_stance_analysis}
-#' Define analysis stance type
-#'
-#' @param language Language code
-#' @param scale Stance scale type
-#'
-#' @return List defining analysis stance scale
-#' @keywords internal
+## Data Schema
 
-type_stance_analysis <- function(language, scale) {
-# Implementation
+```{r function-type_stance_analysis}
+#' Define stance analysis schema for structured extraction
+#'
+#' @description
+#' Creates a complete schema for stance analysis that combines a stance scale
+#' with an explanation field. This schema is designed for use with
+#' `ellmer::parallel_chat_structured()` to extract structured stance analysis results.
+#'
+#' @details
+#' This function creates a composite type object containing:
+#' - **stance:** A scale type (categorical, numeric, or Likert) for the stance value
+#' - **explanation:** A string field for the stance classification explanation
+#'
+#' The function supports three scale types:
+#' - `"numeric"`: Continuous scale (typically -1 to 1)
+#' - `"likert"`: Five-point Likert scale (Strongly Disagree to Strongly Agree)
+#' - `"categorical"`: Three-point categorical scale (Positive, Negative, Neutral)
+#'
+#' The explanation field description is automatically localised based on the
+#' provided language code using the `'explanation_description'` translation key.
+#'
+#' @param language Language code for localisation (e.g., "en", "uk", "ru").
+#'   Must be one of the available languages in the rcola translation dictionary.
+#'
+#' @param description_file Path to a file containing the stance scale description.
+#'   The file may include template variables that will be interpolated
+#'   using `ellmer::interpolate_file()`.
+#'
+#' @param scale Type of stance scale to use. One of:
+#'   - `"numeric"`: Continuous numeric scale
+#'   - `"likert"`: Five-point Likert scale
+#'   - `"categorical"`: Three-point categorical scale (default)
+#'
+#' @return
+#' A type object compatible with `ellmer::parallel_chat_structured()`.
+#' The returned object is a composite type containing:
+#' - `stance`: A scale type definition
+#' - `explanation`: A string type definition with localised description
+#'
+#' @seealso
+#' [type_stance_categorical()], [type_stance_numeric()], [type_stance_likert()]
+#' for individual scale definitions.
+#'
+#' [ellmer::parallel_chat_structured()] for using this schema in
+#' structured data extraction tasks.
+#'
+#' [l()] for translation lookup.
+#'
+#' @examples
+#' \dontrun{
+#'   # Create schema for categorical stance analysis in English
+#'   schema <- type_stance_analysis(
+#'     language = "en",
+#'     description_file = "inst/prompts/en/description-categorical.md",
+#'     scale = "categorical"
+#'   )
+#'
+#'   # Create schema for numeric stance analysis in Russian
+#'   schema <- type_stance_analysis(
+#'     language = "ru",
+#'     description_file = "inst/prompts/ru/description-numeric.md",
+#'     scale = "numeric"
+#'   )
+#'
+#'   # Use in structured extraction
+#'   result <- ellmer::parallel_chat_structured(
+#'     "Some text",          
+#'     chat = my_chat,
+#'     schema = schema
+#'   )
+#' }
+#'
+#' @keywords internal
+type_stance_analysis <- function(language, description_file, scale = "categorical") {
+  # Validate scale parameter
+  scale <- rlang::arg_match(scale, c("numeric", "likert", "categorical"))
+  
+  # A schema for the structured output
+  type_stance <- switch(
+      scale,
+      numeric = type_stance_numeric(description_file),
+      likert = type_stance_likert(description_file),
+      type_stance_categorical(description_file)
+  )
+  
+  type_object(
+      stance = type_stance,
+      explanation = type_string(
+          description = l(language, 'explanation_description')
+      )
+  )
 }
 ```
 
 ```{r tests-type_stance_analysis}
-test_that('type_stance_analysis is a function', {
-expect_true(inherits(type_stance_analysis, 'function'))
+prompts_dir <- here::here('inst', 'prompts', 'en')
+# prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+
+test_that('type_stance_analysis returns object type', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file,
+    scale = "categorical"
+  )
+  expect_is(result, "ellmer::TypeObject")
+})
+
+test_that('type_stance_analysis includes stance and explanation fields', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file,
+    scale = "categorical"
+  )
+  expect_true("stance" %in% names(result@properties))
+  expect_true("explanation" %in% names(result@properties))
+})
+
+test_that('type_stance_analysis creates categorical scale by default', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file
+  )
+  expect_is(result@properties$stance, "ellmer::TypeEnum")
+  expect_equal(result@properties$stance@values, c('Positive', 'Negative', 'Neutral'))
+})
+
+test_that('type_stance_analysis creates numeric scale when specified', {
+  template_file <- file.path(prompts_dir, 'description-numeric.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file,
+    scale = "numeric"
+  )
+  expect_is(result@properties$stance, "ellmer::TypeBasic")
+  expect_equal(result@properties$stance@type, "number")
+})
+
+test_that('type_stance_analysis creates Likert scale when specified', {
+  template_file <- file.path(prompts_dir, 'description-likert.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file,
+    scale = "likert"
+  )
+  expect_is(result@properties$stance, "ellmer::TypeEnum")
+  expect_equal(
+    result@properties$stance@values,
+    c('Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree')
+  )
+})
+
+test_that('type_stance_analysis includes localised explanation description', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_analysis(
+    language = "en",
+    description_file = template_file
+  )
+  expect_is(result@properties$explanation, "ellmer::TypeBasic")
+  expect_equal(result@properties$explanation@type, "string")
+  expect_type(result@properties$explanation@description, "character")
+  expect_true(nchar(result@properties$explanation@description) > 0)
+})
+
+test_that('type_stance_analysis uses correct language for explanation', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  
+  result_en <- type_stance_analysis(
+    language = "en",
+    description_file = template_file
+  )
+  result_uk <- type_stance_analysis(
+    language = "uk",
+    description_file = template_file
+  )
+  
+  expect_false(
+    result_en@properties$explanation@description ==
+    result_uk@properties$explanation@description
+  )
+})
+
+test_that('type_stance_analysis rejects invalid scale', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  expect_error(
+    type_stance_analysis(
+      language = "en",
+      description_file = template_file,
+      scale = "invalid"
+    ),
+    "must be one of"
+  )
+})
+
+test_that('type_stance_analysis rejects invalid language', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  expect_error(
+    type_stance_analysis(
+      language = "fr",
+      description_file = template_file
+    ),
+    "Language 'fr' not available"
+  )
+})
+
+test_that('type_stance_analysis handles missing description file', {
+  template_file <- file.path(prompts_dir, 'nonexistent.md')
+  skip_if(file.exists(template_file))
+  expect_error(
+    type_stance_analysis(
+      language = "en",
+      description_file = template_file
+    ),
+    class = "error"
+  )
+})
+
+test_that('type_stance_analysis works with all available languages', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  
+  available_langs <- rcola_available_languages()
+  
+  for (lang in available_langs) {
+    result <- type_stance_analysis(
+      language = lang,
+      description_file = template_file
+    )
+    expect_is(result, "ellmer::TypeObject")
+    expect_true("stance" %in% names(result@properties))
+    expect_true("explanation" %in% names(result@properties))
+  }
+})
+
+test_that('type_stance_analysis works with all scale types', {
+  cat_file <- file.path(prompts_dir, 'description-categorical.md')
+  num_file <- file.path(prompts_dir, 'description-numeric.md')
+  likert_file <- file.path(prompts_dir, 'description-likert.md')
+  
+  skip_if_not(
+    file.exists(cat_file) &&
+      file.exists(num_file) &&
+      file.exists(likert_file)
+  )
+  
+  result_cat <- type_stance_analysis(
+    language = "en",
+    description_file = cat_file,
+    scale = "categorical"
+  )
+  result_num <- type_stance_analysis(
+    language = "en",
+    description_file = num_file,
+    scale = "numeric"
+  )
+  result_likert <- type_stance_analysis(
+    language = "en",
+    description_file = likert_file,
+    scale = "likert"
+  )
+  
+  expect_is(result_cat@properties$stance, "ellmer::TypeEnum")
+  expect_equal(result_num@properties$stance@type, "number")
+  expect_is(result_likert@properties$stance, "ellmer::TypeEnum")
 })
 ```
 
