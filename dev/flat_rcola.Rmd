@@ -2208,9 +2208,30 @@ prompts_prepare <- function(
 ```
 
 ```{r tests-prompts_prepare}
-test_that('prompts_prepare is a function', {
-expect_true(inherits(prompts_prepare, 'function'))
+prompts_dir <- here::here('inst', 'prompts', 'en')
+# prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+
+test_that('prompts_prepare returns list with system and task', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  result <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "climate change",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  
+  expect_type(result, "list")
+  expect_named(result, c("system", "task"))
 })
+
+
 ```
 
 ## Tasks
