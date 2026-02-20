@@ -2231,7 +2231,407 @@ test_that('prompts_prepare returns list with system and task', {
   expect_named(result, c("system", "task"))
 })
 
+test_that('prompts_prepare returns non-empty strings', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  result <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "climate change",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  
+  expect_type(result$system, "character")
+  expect_type(result$task, "character")
+  expect_true(nchar(result$system) > 0)
+  expect_true(all(nchar(result$task) > 0))
+})
 
+test_that('prompts_prepare works with character vector for text', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  result <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "climate change",
+    text = texts,
+    target_type = "the object"
+  )
+  
+  expect_type(result, "list")
+  expect_length(result$system, 1)
+  expect_length(result$task, length(texts))
+})
+
+test_that('prompts_prepare works with all valid roles', {
+  roles <- c('linguist', 'domain', 'interpreter', 'debater', 'judger')
+  
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md'),
+    `system-domain` = file.path(prompts_dir, 'system-domain.md'),
+    `user-domain` = file.path(prompts_dir, 'user-domain.md'),
+    `system-interpreter` = file.path(prompts_dir, 'system-interpreter.md'),
+    `user-interpreter` = file.path(prompts_dir, 'user-interpreter.md'),
+    `system-debater` = file.path(prompts_dir, 'system-debater.md'),
+    `user-debater` = file.path(prompts_dir, 'user-debater.md'),
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md'),
+    reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
+    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    scale_guide = file.path(prompts_dir, 'guide-likert.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  for (r in roles) {
+    result <- prompts_prepare(
+      role = r,
+      templates = templates,
+      language = "en",
+      target = "climate change",
+      text = texts,
+      target_type = "the object",
+      domain = "content analysis expert",
+      stance = "neutral",
+      LingResponse = "This is just a placeholder phrase",
+      ExpertResponse = "Just a dummy text document with no much sense",
+      UserResponse = "Every second real tweet be like",
+      FavourResponse = "I have a feeling it is positive",
+      AgainstResponse = "Most likely, this is some kind of malicious mockery",
+      NeutralResponse = "Context is missing and we should be sceptical"
+    )
+    
+    expect_type(result, "list")
+    expect_named(result, c("system", "task"))
+    expect_type(result$system, "character")
+    expect_type(result$task, "character")
+    expect_length(result$system, 1)
+    expect_length(result$task, length(texts))
+    expect_true(nchar(result$system) > 0)
+    expect_true(all(nchar(result$task) > 0))
+  }
+})
+
+test_that('prompts_prepare rejects invalid role', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  expect_error(
+    prompts_prepare(
+      role = "invalid_role",
+      templates = templates,
+      language = "en",
+      target = "climate change",
+      text = c("some text", "and more"),
+      target_type = "the object"
+    ),
+    "must be one of"
+  )
+})
+
+test_that('prompts_prepare rejects invalid language', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  expect_error(
+    prompts_prepare(
+      role = "linguist",
+      templates = templates,
+      language = "fr",
+      target = "climate change",
+      text = c("some text", "and more"),
+      target_type = "the object"
+    ),
+    "must be one of"
+  )
+})
+
+test_that('prompts_prepare handles missing system template', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'nonexistent-system.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if(file.exists(templates$`system-linguist`))
+  
+  expect_error(
+    prompts_prepare(
+      role = "linguist",
+      templates = templates,
+      language = "en",
+      target = "climate change",
+      text = c("some text", "and more"),
+      target_type = "the object"
+    ),
+    "System template not found"
+  )
+})
+
+test_that('prompts_prepare handles missing user template', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'nonexistent-user.md')
+  )
+  skip_if(file.exists(templates$`user-linguist`))
+  
+  expect_error(
+    prompts_prepare(
+      role = "linguist",
+      templates = templates,
+      language = "en",
+      target = "climate change",
+      text = c("some text", "and more"),
+      target_type = "the object"
+    ),
+    "User template not found"
+  )
+})
+
+test_that('prompts_prepare works with domain role and domain parameter', {
+  templates <- list(
+    `system-domain` = file.path(prompts_dir, 'system-domain.md'),
+    `user-domain` = file.path(prompts_dir, 'user-domain.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  result <- prompts_prepare(
+    role = "domain",
+    templates = templates,
+    language = "en",
+    target = "artificial intelligence",
+    text = "AI will replace all human jobs",
+    target_type = "the object",
+    domain = "technology and employment expert"
+  )
+  
+  expect_type(result, "list")
+  expect_true(nchar(result$system) > 0)
+  expect_true(nchar(result$task) > 0)
+})
+
+test_that('prompts_prepare works with judger role and no additional options', {
+  templates <- list(
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md'),
+    reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
+    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    scale_guide = file.path(prompts_dir, 'guide-likert.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  result <- prompts_prepare(
+    role = "judger",
+    templates = templates,
+    language = "en",
+    add_reference_resolution = FALSE,
+    add_statement_resolution = FALSE,
+    target = "content analysis",
+    text = texts,
+    target_type = "the object",
+    FavourResponse = "I have a feeling it is positive",
+    AgainstResponse = "Most likely, this is some kind of malicious mockery",
+    NeutralResponse = "Context is missing and we should be sceptical"
+  )
+  
+  expect_type(result, "list")
+  expect_true(nchar(result$system) > 0)
+  expect_true(all(nchar(result$task) > 0))
+  expect_length(result$system, 1)
+  expect_length(result$task, length(texts))
+  expect_no_match(result$system, "reference_instruction")
+  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "Resolve a reference if")
+  expect_no_match(result$system, "Rules for Statements")
+})
+
+test_that('prompts_prepare works with judger role and reference resolution', {
+  templates <- list(
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md'),
+    reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
+    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    scale_guide = file.path(prompts_dir, 'guide-likert.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  result <- prompts_prepare(
+    role = "judger",
+    templates = templates,
+    language = "en",
+    add_reference_resolution = TRUE,
+    add_statement_resolution = FALSE,
+    target = "content analysis",
+    text = texts,
+    target_type = "the object",
+    FavourResponse = "I have a feeling it is positive",
+    AgainstResponse = "Most likely, this is some kind of malicious mockery",
+    NeutralResponse = "Context is missing and we should be sceptical"
+  )
+  
+  expect_type(result, "list")
+  expect_true(nchar(result$system) > 0)
+  expect_true(all(nchar(result$task) > 0))
+  expect_length(result$system, 1)
+  expect_length(result$task, length(texts))
+  expect_no_match(result$system, "reference_instruction")
+  expect_no_match(result$system, "statement_instruction")
+  expect_match(result$system, "Resolve a reference if")
+  expect_no_match(result$system, "Rules for Statements")
+})
+
+test_that('prompts_prepare works with judger role and statement resolution', {
+  templates <- list(
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md'),
+    reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
+    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    scale_guide = file.path(prompts_dir, 'guide-likert.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  result <- prompts_prepare(
+    role = "judger",
+    templates = templates,
+    language = "en",
+    add_reference_resolution = FALSE,
+  add_statement_resolution = TRUE,
+    target = "content analysis",
+    text = texts,
+    target_type = "the object",
+    FavourResponse = "I have a feeling it is positive",
+    AgainstResponse = "Most likely, this is some kind of malicious mockery",
+    NeutralResponse = "Context is missing and we should be sceptical"
+  )
+  
+  expect_type(result, "list")
+  expect_true(nchar(result$system) > 0)
+  expect_true(all(nchar(result$task) > 0))
+  expect_length(result$system, 1)
+  expect_length(result$task, length(texts))
+  expect_no_match(result$system, "reference_instruction")
+  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "Resolve a reference if")
+  expect_match(result$system, "Rules for Statements")
+})
+
+test_that('prompts_prepare works with judger role and both options', {
+  templates <- list(
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md'),
+    reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
+    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    scale_guide = file.path(prompts_dir, 'guide-likert.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  texts <- c("some text", "and more")
+  
+  result <- prompts_prepare(
+    role = "judger",
+    templates = templates,
+    language = "en",
+    add_reference_resolution = TRUE,
+  add_statement_resolution = TRUE,
+    target = "content analysis",
+    text = texts,
+    target_type = "the object",
+    FavourResponse = "I have a feeling it is positive",
+    AgainstResponse = "Most likely, this is some kind of malicious mockery",
+    NeutralResponse = "Context is missing and we should be sceptical"
+  )
+  
+  expect_type(result, "list")
+  expect_true(nchar(result$system) > 0)
+  expect_true(all(nchar(result$task) > 0))
+  expect_length(result$system, 1)
+  expect_length(result$task, length(texts))
+  expect_no_match(result$system, "reference_instruction")
+  expect_no_match(result$system, "statement_instruction")
+  expect_match(result$system, "Resolve a reference if")
+  expect_match(result$system, "Rules for Statements")
+})
+
+test_that('prompts_prepare returns consistent results for same inputs', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  result1 <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "content analysis",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  result2 <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "content analysis",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  
+  expect_identical(result1$system, result2$system)
+  expect_identical(result1$task, result2$task)
+})
+
+test_that('prompts_prepare produces different results for different target', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+  
+  result1 <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "climate change",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  result2 <- prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "artificial intelligence",
+    text = c("some text", "and more"),
+    target_type = "the object"
+  )
+  
+  expect_identical(result1$system, result2$system)
+  expect_disjoint(result1$task, result2$task)
+})
 ```
 
 ## Tasks
