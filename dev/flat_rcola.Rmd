@@ -40,7 +40,7 @@ The package employs a three-stage collaborative approach:
 
 1. **Stage 1: Parallel Analysis** — Specialised LLM-based agents (linguist, domain expert, social interpreter) analyse texts from their respective perspectives
 2. **Stage 2: Parallel Debates** — Agents debate their analyses to reach consensus
-3. **Stage 3: Parallel Judgment** — A judge agent synthesises the debate and produces final stance classification
+3. **Stage 3: Parallel judgement** — A judge agent synthesises the debate and produces final stance classification
 
 ## Key Features
 
@@ -3617,7 +3617,7 @@ test_that("prepare_debater_chats fails with multiple system prompts", {
 
 ---
 
-# Judgment Stage
+# judgement Stage
 
 ## Prepare Judger Chats
 
@@ -4241,34 +4241,243 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 })
 ```
 
-## Stage 3: Parallel Judgment
+## Stage 3: Parallel Judgement
 
-```{r function-stage_3_parallel_judgment}
+```{r function-stage_3_parallel_judgement}
 #' Execute Stage 3: Judge synthesis
 #'
-#' @param inputs Input texts
-#' @param chat_base Chat configuration
-#' @param verbose Show progress
-#' @param rpm Requests per minute limit
-#' @param ... Additional arguments
+#' @description
+#' Orchestrates the final stage of the analysis. It takes the results from all 
+#' three debate branches and uses a 'judge' agent to produce a structured 
+#' final stance judgement. This stage uses structured output to ensure the 
+#' results follow a predefined schema.
 #'
-#' @return Final stance judgments
+#' @param inputs A list containing:
+#'   - `texts`, `targets`, `types`, `target_types`, `language`, `prompt_templates`, `scale`.
+#'   - `debate_results`: Results from Stage 2.
+#' @param chat_base An `ellmer::Chat` object.
+#' @param verbose Logical. Whether to print progress and timing.
+#' @param rpm Integer. Requests per minute limit for API calls.
+#' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
+#'
+#' @return The `inputs` list with an additional element `judgement_results`, 
+#'   containing the structured stance analysis.
+#'
 #' @keywords internal
+#' @importFrom tictoc tic toc
+#' @importFrom glue glue
+#' @importFrom ellmer parallel_chat_structured
+#' @importFrom cli cli_warn
 
-stage_3_parallel_judgment <- function(
-    inputs,
-    chat_base,
-    verbose = TRUE,
-    rpm = 500,
-    ...
+stage_3_parallel_judgement <- function(
+        inputs,
+        chat_base,
+        verbose = TRUE,
+        rpm = 500,
+        ...
 ) {
-  # Implementation
+    n <- length(inputs$texts)
+    
+    # Validate input structure
+    required_fields <- c(
+        'prompt_templates',
+        'language',
+        'texts',
+        'targets',
+        'types',
+        'target_types',
+        'debate_results',
+        'scale'
+    )
+    validate_fields(inputs, required_fields, 'stance decision')
+    
+    # Ensure Stage 2 results are present and valid
+    validate_inputs(inputs$debate_results$positive, n, 'Positive stance debates')
+    validate_inputs(inputs$debate_results$negative, n, 'Negative stance debates')
+    validate_inputs(inputs$debate_results$neutral, n, 'Neutral stance debates')
+    
+    tictoc::tic('Stage 3')
+    if (verbose) {
+        cat(glue::glue("\U23F3 Stage 3: Parallel judgement ({n} items)..."), "\n")
+    }
+    
+    # 1. Prepare tasks for the judge
+    judger_tasks <- prepare_judger_chats(
+        inputs,
+        chat_base = chat_base
+    )
+    
+    if (verbose) cat("    \u2696\UFE0F Running parallel judgements...\n")
+    
+    # 2. Execute structured parallel judgements
+    inputs[['judgement_results']] <- ellmer::parallel_chat_structured(
+        chat = judger_tasks$chats[[1]],
+        prompts = judger_tasks$tasks,
+        type = type_stance_analysis(
+            inputs$language,
+            inputs$prompt_templates$scale_description,
+            inputs$scale
+        ),
+        rpm = rpm,
+        convert = TRUE,
+        ...
+    ) |> catch('making final judgement')
+    
+    # 3. Check for failed judgements (NA values)
+    if (any(is.na(inputs$judgement_results$stance))) {
+        n_na <- sum(is.na(inputs$judgement_results$stance))
+        cli::cli_warn(
+            "{n_na} item{?s} returned NA stance",
+            call = rlang::expr(llm_stance())
+        )
+    }
+    
+    tictoc::toc(func.toc = stage_complete, quiet = !verbose)
+    
+    inputs
 }
 ```
 
-```{r tests-stage_3_parallel_judgment}
-test_that('stage_3_parallel_judgment is a function', {
-  expect_true(inherits(stage_3_parallel_judgment, 'function'))
+```{r tests-stage_3_parallel_judgement}
+# Reusing the MockChat
+MockChat <- R6::R6Class(
+  "MockChat",
+  public = list(
+    system_prompt = NULL,
+    set_system_prompt = function(prompt) {
+      self$system_prompt <- prompt
+    },
+    chat = function(..., echo = NULL) paste("Response", seq_along(list(...)))
+  )
+)
+
+test_that("stage_3_parallel_judgement executes structured chat with correct schema", {
+  # 1. Setup Data
+  inputs <- list(
+    texts = c("T1", "T2"),
+    targets = c("A", "B"),
+    types = c("statement", "statement"),
+    target_types = c("statement", "statement"),
+    language = "en",
+    scale = "likert",
+    prompt_templates = list(scale_description = "Desc"),
+    debate_results = list(
+      positive = c("P1", "P2"),
+      negative = c("N1", "N2"),
+      neutral = c("Neu1", "Neu2")
+    )
+  )
+  
+  # 2. Setup Mocks
+  # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
+  # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
+  mockery::stub(stage_3_parallel_judgement, "tictoc::tic", NULL)
+  mockery::stub(stage_3_parallel_judgement, "tictoc::toc", NULL)
+  
+  # Mock schema generator
+  mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "mock_schema")
+  
+  # Mock prepare_judger_chats
+  mockery::stub(stage_3_parallel_judgement, "prepare_judger_chats", list(
+    chats = list(MockChat$new()),
+    tasks = c("Task 1", "Task 2")
+  ))
+  
+  # Mock parallel_chat_structured
+  mock_results <- data.frame(
+    stance = c("Strongly Disagree", "Agree"),
+    reasoning = c("R1", "R2")
+  )
+  mock_parallel <- mockery::mock(mock_results)
+  mockery::stub(
+    stage_3_parallel_judgement,
+    "ellmer::parallel_chat_structured",
+    mock_parallel
+  )
+  
+  # 3. Execute
+  result <- stage_3_parallel_judgement(inputs, MockChat$new(), verbose = FALSE)
+  
+  # 4. Verify
+  mockery::expect_called(mock_parallel, 1)
+  expect_equal(result$judgement_results, mock_results)
+  
+  # Verify arguments passed to parallel_chat_structured
+  args <- mockery::mock_args(mock_parallel)[[1]]
+  expect_equal(args$type, "mock_schema")
+  expect_true(args$convert)
+})
+
+test_that("stage_3_parallel_judgement warns when NA stances are returned", {
+  inputs <- list(
+    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    language = "en", scale = "likert", prompt_templates = list(),
+    debate_results = list(positive = "P", negative = "N", neutral = "Neu")
+  )
+  
+  # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
+  # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
+  mockery::stub(
+    stage_3_parallel_judgement,
+    "prepare_judger_chats",
+    list(chats = list(1), tasks = "T")
+  )
+  mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "likert schema")
+  
+  # Return a result with NA stance
+  mock_results <- data.frame(stance = NA_real_, explanation = "AI has failed")
+  mockery::stub(
+    stage_3_parallel_judgement,
+    "ellmer::parallel_chat_structured",
+    mock_results
+  )
+  
+  # Expect warning from cli::cli_warn
+  expect_warning(
+    stage_3_parallel_judgement(inputs, MockChat$new(), verbose = FALSE),
+    regexp = "1 item returned NA stance",
+    fixed = TRUE
+  )
+})
+
+test_that("stage_3_parallel_judgement passes additional arguments (...) to parallel call", {
+  inputs <- list(
+    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    language = "en", scale = "likert", prompt_templates = list(),
+    debate_results = list(positive = "P", negative = "N", neutral = "Neu")
+  )
+  
+  # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
+  # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
+  mockery::stub(
+    stage_3_parallel_judgement,
+    "prepare_judger_chats",
+    list(chats = list(1), tasks = "T")
+  )
+  
+  mock_parallel <- mockery::mock(
+    data.frame(stance = "Strongly Agree", explanation = "AI Content Analysis")
+  )
+  mockery::stub(
+    stage_3_parallel_judgement,
+    "ellmer::parallel_chat_structured",
+    mock_parallel
+  )
+  
+  # Pass a custom argument like 'max_tokens'
+  stage_3_parallel_judgement(
+    inputs,
+    MockChat$new(),
+    verbose = FALSE,
+    rpm = 111,
+    max_active = 12,
+    on_error = "stop"
+  )
+  
+  args <- mockery::mock_args(mock_parallel)[[1]]
+  expect_equal(args$max_active, 12)
+  expect_equal(args$on_error, "stop")
+  expect_equal(args$rpm, 111)
 })
 ```
 
