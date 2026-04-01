@@ -7,8 +7,9 @@ chunk_output_type: console
 
 ```{r development, include=FALSE}
 library(testthat)
-library(rlang)
+library(withr)
 library(mockery)
+library(rlang)
 library(cli)
 library(ellmer)
 library(yaml)
@@ -2157,6 +2158,163 @@ test_that('type_stance_analysis works with all scale types', {
 
 ## Prompts
 
+```{r function-templates_collect}
+#' Collect prompt template file paths
+#'
+#' @description
+#' Scans specified and default directories to locate Markdown template files 
+#' for a given language and scale type. It follows a priority order: user-defined 
+#' directory first, followed by the package's internal prompt directories.
+#'
+#' @param prompts_dir Character string. Path to a custom directory containing 
+#'   prompt templates. Can be `NULL`.
+#' @param language Character string. Language code (e.g., "en", "uk").
+#' @param scale Character string. The rating scale type: "categorical", 
+#'   "numeric", or "likert".
+#'
+#' @return A named list where keys represent template roles (e.g., 
+#'   `system-linguist`, `scale_description`) and values are absolute file paths.
+#'
+#' @throws An error via `cli_abort()` if no valid directories are found or 
+#'   if a required template file is missing across all search locations.
+#'
+#' @keywords internal
+templates_collect <- function(prompts_dir, language, scale) {
+  # 1. Determine default package directories
+  DEFAULT_PROMPTS_DIR <- system.file(
+    file.path('prompts', language),
+    package = 'rcola'
+  )
+  # Fallback for development environment
+  if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
+    DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
+  }
+  
+  # 2. Filter existing directories
+  search_dirs <- c(prompts_dir, DEFAULT_PROMPTS_DIR) |> 
+    Filter(f = \(x) !is.null(x) && dir.exists(x))
+  
+  if (length(search_dirs) == 0) {
+    cli::cli_abort(
+      "No prompt directories found for language {.val {language}}"
+    )
+  }
+  
+  # 3. Define the set of required role templates
+  role_templates <- expand.grid(
+    call = c('system', 'user'),
+    role = c('linguist', 'domain', 'interpreter', 'debater', 'judger'),
+    stringsAsFactors = FALSE
+  ) |>
+    glue::glue_data('{call}-{role}.md') |>
+    as.character() |>
+    as.list()
+  
+  # Clean names (e.g., "system-linguist.md" -> "system-linguist")
+  names(role_templates) <- gsub('\\.md', '', role_templates)
+  
+  # 4. Combine with scale-specific and helper files
+  # Note: scale is now 'categorical', 'numeric', or 'likert'
+  prompt_files <- list(
+    scale_description = glue::glue('description-{scale}.md'),
+    scale_guide = glue::glue('guide-{scale}.md'),
+    reference_resolution = 'reference-resolution.md',
+    statement_resolution = 'statement-resolution.md'
+  ) |>
+    c(role_templates)
+  
+  prompt_templates <- list()
+  
+  # 5. Resolve paths with priority
+  for (name in names(prompt_files)) {
+    filename <- prompt_files[[name]]
+    
+    found <- FALSE
+    for (dir in search_dirs) {
+      filepath <- file.path(dir, filename)
+      if (file.exists(filepath)) {
+        prompt_templates[[name]] <- filepath
+        found <- TRUE
+        break
+      }
+    }
+    
+    if (!found) {
+      cli::cli_abort(
+        "Prompt {.file {filename}} not found for language {.val {language}}"
+      )
+    }
+  }
+  
+  prompt_templates
+}
+```
+
+```{r tests-templates_collect}
+test_that("templates_collect handles different scale types correctly", {
+  sys_dir <- withr::local_tempdir()
+  
+  # Create files for a 'likert' scale
+  file.create(file.path(sys_dir, "description-likert.md"))
+  file.create(file.path(sys_dir, "guide-likert.md"))
+  file.create(file.path(sys_dir, "reference-resolution.md"))
+  file.create(file.path(sys_dir, "statement-resolution.md"))
+  
+  # Create all other required role files
+  roles <- c("system-linguist", "user-linguist", "system-domain", "user-domain",
+             "system-interpreter", "user-interpreter", "system-debater", 
+             "user-debater", "system-judger", "user-judger")
+  for (r in roles) file.create(file.path(sys_dir, paste0(r, ".md")))
+  
+  mockery::stub(templates_collect, "system.file", sys_dir)
+  mockery::stub(templates_collect, "dir.exists", TRUE)
+  
+  # Test Likert
+  res_likert <- templates_collect(NULL, "en", "likert")
+  expect_match(res_likert$scale_description, "description-likert.md", fixed = TRUE)
+  expect_match(res_likert$scale_guide, "guide-likert.md", fixed = TRUE)
+  
+  # Test Numeric (should fail if files don't exist)
+  expect_error(
+    templates_collect(NULL, "en", "numeric"),
+    regexp = "Prompt.+?description\\-numeric\\.md.+? not found",
+  )
+})
+
+test_that("templates_collect prioritises user directory over system directory", {
+  sys_dir <- withr::local_tempdir(pattern = "default")
+  user_dir <- withr::local_tempdir(pattern = "custom")
+  
+  # Create a file in both
+  file.create(file.path(sys_dir, "system-judger.md"))
+  file.create(file.path(user_dir, "system-judger.md"))
+  
+  # Create all other required files in sys_dir to satisfy the loop
+  all_files <- c(
+    "description-categorical.md", "guide-categorical.md",
+    "reference-resolution.md", "statement-resolution.md",
+    "system-linguist.md", "user-linguist.md", "system-domain.md", "user-domain.md",
+    "system-interpreter.md", "user-interpreter.md", "system-debater.md", 
+    "user-debater.md", "user-judger.md"
+  )
+  for (f in all_files) file.create(file.path(sys_dir, f))
+  
+  mockery::stub(templates_collect, "system.file", sys_dir)
+  mockery::stub(templates_collect, "dir.exists", TRUE)
+  
+  res <- templates_collect(
+    prompts_dir = user_dir,
+    language = "en",
+    scale = "categorical"
+  )
+  
+  # User file should be selected
+  expect_match(res$`system-judger`, user_dir, fixed = TRUE)
+  # Other files should still come from sys_dir
+  expect_match(res$scale_description, sys_dir, fixed = TRUE)
+})
+```
+
 ```{r function-prompts_prepare}
 #' Prepare system and user prompts for a given role
 #'
@@ -3631,37 +3789,37 @@ test_that("prepare_debater_chats fails with multiple system prompts", {
 #' @keywords internal
 
 prepare_judger_chats <- function(
-        inputs,
-        chat_base
+    inputs,
+    chat_base
 ) {
-    prompts <- with(
-        inputs,
-        prompts_prepare(
-            'judger',
-            language = language,
-            templates = prompt_templates,
-            text = texts,
-            target_type = target_types,
-            target = targets,
-            FavourResponse = debate_results$positive,
-            AgainstResponse = debate_results$negative,
-            NeutralResponse = debate_results$neutral,
-            # Additional instructions based on object types
-            add_reference_resolution = 'object' %in% types,
-            add_statement_resolution = 'statement' %in% types
-        )
+  prompts <- with(
+    inputs,
+    prompts_prepare(
+      'judger',
+      language = language,
+      templates = prompt_templates,
+      text = texts,
+      target_type = target_types,
+      target = targets,
+      FavourResponse = debate_results$positive,
+      AgainstResponse = debate_results$negative,
+      NeutralResponse = debate_results$neutral,
+      # Additional instructions based on object types
+      add_reference_resolution = 'object' %in% types,
+      add_statement_resolution = 'statement' %in% types
     )
-    
-    if (length(prompts$system) > 1) {
-        abort(
-            c(
-                "Multiple system prompts are not allowed at stage 3",
-                "i" = "Consider checking variable placeholders in system templates"
-            )
-        )
-    }
-    
-    tasks_prepare(chat_base, prompts, length(inputs$texts))
+  )
+  
+  if (length(prompts$system) > 1) {
+    abort(
+      c(
+        "Multiple system prompts are not allowed at stage 3",
+        "i" = "Consider checking variable placeholders in system templates"
+      )
+    )
+  }
+  
+  tasks_prepare(chat_base, prompts, length(inputs$texts))
 }
 ```
 
@@ -4270,71 +4428,71 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 #' @importFrom cli cli_warn
 
 stage_3_parallel_judgement <- function(
-        inputs,
-        chat_base,
-        verbose = TRUE,
-        rpm = 500,
-        ...
+    inputs,
+    chat_base,
+    verbose = TRUE,
+    rpm = 500,
+    ...
 ) {
-    n <- length(inputs$texts)
-    
-    # Validate input structure
-    required_fields <- c(
-        'prompt_templates',
-        'language',
-        'texts',
-        'targets',
-        'types',
-        'target_types',
-        'debate_results',
-        'scale'
+  n <- length(inputs$texts)
+  
+  # Validate input structure
+  required_fields <- c(
+    'prompt_templates',
+    'language',
+    'texts',
+    'targets',
+    'types',
+    'target_types',
+    'debate_results',
+    'scale'
+  )
+  validate_fields(inputs, required_fields, 'stance decision')
+  
+  # Ensure Stage 2 results are present and valid
+  validate_inputs(inputs$debate_results$positive, n, 'Positive stance debates')
+  validate_inputs(inputs$debate_results$negative, n, 'Negative stance debates')
+  validate_inputs(inputs$debate_results$neutral, n, 'Neutral stance debates')
+  
+  tictoc::tic('Stage 3')
+  if (verbose) {
+    cat(glue::glue("\U23F3 Stage 3: Parallel judgement ({n} items)..."), "\n")
+  }
+  
+  # 1. Prepare tasks for the judge
+  judger_tasks <- prepare_judger_chats(
+    inputs,
+    chat_base = chat_base
+  )
+  
+  if (verbose) cat("    \u2696\UFE0F Running parallel judgements...\n")
+  
+  # 2. Execute structured parallel judgements
+  inputs[['judgement_results']] <- ellmer::parallel_chat_structured(
+    chat = judger_tasks$chats[[1]],
+    prompts = judger_tasks$tasks,
+    type = type_stance_analysis(
+      inputs$language,
+      inputs$prompt_templates$scale_description,
+      inputs$scale
+    ),
+    rpm = rpm,
+    convert = TRUE,
+    ...
+  ) |> catch('making final judgement')
+  
+  # 3. Check for failed judgements (NA values)
+  if (any(is.na(inputs$judgement_results$stance))) {
+    n_na <- sum(is.na(inputs$judgement_results$stance))
+    cli::cli_warn(
+      "{n_na} item{?s} returned NA stance",
+      call = rlang::expr(llm_stance())
     )
-    validate_fields(inputs, required_fields, 'stance decision')
-    
-    # Ensure Stage 2 results are present and valid
-    validate_inputs(inputs$debate_results$positive, n, 'Positive stance debates')
-    validate_inputs(inputs$debate_results$negative, n, 'Negative stance debates')
-    validate_inputs(inputs$debate_results$neutral, n, 'Neutral stance debates')
-    
-    tictoc::tic('Stage 3')
-    if (verbose) {
-        cat(glue::glue("\U23F3 Stage 3: Parallel judgement ({n} items)..."), "\n")
-    }
-    
-    # 1. Prepare tasks for the judge
-    judger_tasks <- prepare_judger_chats(
-        inputs,
-        chat_base = chat_base
-    )
-    
-    if (verbose) cat("    \u2696\UFE0F Running parallel judgements...\n")
-    
-    # 2. Execute structured parallel judgements
-    inputs[['judgement_results']] <- ellmer::parallel_chat_structured(
-        chat = judger_tasks$chats[[1]],
-        prompts = judger_tasks$tasks,
-        type = type_stance_analysis(
-            inputs$language,
-            inputs$prompt_templates$scale_description,
-            inputs$scale
-        ),
-        rpm = rpm,
-        convert = TRUE,
-        ...
-    ) |> catch('making final judgement')
-    
-    # 3. Check for failed judgements (NA values)
-    if (any(is.na(inputs$judgement_results$stance))) {
-        n_na <- sum(is.na(inputs$judgement_results$stance))
-        cli::cli_warn(
-            "{n_na} item{?s} returned NA stance",
-            call = rlang::expr(llm_stance())
-        )
-    }
-    
-    tictoc::toc(func.toc = stage_complete, quiet = !verbose)
-    
-    inputs
+  }
+  
+  tictoc::toc(func.toc = stage_complete, quiet = !verbose)
+  
+  inputs
 }
 ```
 
