@@ -4607,6 +4607,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
   
   # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
   # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
+  mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "likert schema")
   mockery::stub(
     stage_3_parallel_judgement,
     "prepare_judger_chats",
@@ -4645,52 +4646,336 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
 
 ## LLM Stance Detection
 
+### GENERIC FUNCTION
+
 ```{r function-llm_stance}
 #' Detect stance using COLA framework
 #'
-#' @param text Input text(s)
-#' @param ... Additional arguments passed to methods
+#' @description
+#' `llm_stance()` implements a multi-stage "Collaborative rOle-infused LLM-based
+#' Agents" (COLA) framework to detect stance in text towards a specific target
+#' or statement. 
+#' It supports character vectors and data frames (compatible with `mall` style).
 #'
-#' @return stance_result object
+#' @param text,data Input text(s) as a character vector or a data frame.
+#' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
+#'
+#' @return A `stance_result` object (for character method) or a modified 
+#'   data frame (for data.frame method).
+#'
 #' @export
-
 llm_stance <- function(text, ...) {
   UseMethod("llm_stance")
 }
 ```
 
-```{r function-llm_stance.character}
-#' Stance detection for character vectors
-#'
-#' @param text Character vector of texts
-#' @param target Target entity or statement
-#' @param chat_base Chat model configuration
-#' @param type Analysis type: "object" or "statement"
-#' @param language Language code
-#' @param scale Stance scale: "categorical", "numeric", or "likert"
-#' @param domain_role Optional domain-specific role
-#' @param prompts_dir Optional custom prompts directory
-#' @param verbose Show progress messages
-#' @param rpm Requests per minute limit
-#' @param ... Additional arguments
-#'
-#' @return stance_result object
-#' @export
+### CHARACTER METHOD
 
+```{r function-llm_stance.character}
+#' @rdname llm_stance
+#' @description
+#' The `character` method performs the full three-stage analysis:
+#' 1. **Expert Analysis**: Linguistic, domain, and social media perspectives.
+#' 2. **Stance Debates**: Parallel generation of arguments for, against, and neutral.
+#' 3. **Judgement**: Final synthesis into a structured stance score.
+#'
+#' @details
+#' ## Chat Configuration Recommendations
+#' For optimal results, consider the following requirements for each stage:
+#' \itemize{
+#'   \item \strong{Expert Analysis (Stage 1)}: Requires excellent real-world 
+#'   awareness and reasoning. Structured output is NOT required.
+#'   \item \strong{Stance Debates (Stage 2)}: Requires creativity and strong 
+#'   writing skills. Structured output is NOT required.
+#'   \item \strong{Stance Judgement (Stage 3)}: Requires large context width, 
+#'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
+#' }
+#'
+#' @param target Character. The entity or statement the stance is directed at.
+#' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
+#' @param type Analysis type: "object" (entity-based) or "statement" (proposition-based).
+#' @param language Language code (e.g., "en", "ru"). If `NULL`, auto-detected.
+#' @param scale Stance scale: "categorical", "numeric", or "likert".
+#' @param domain_role Optional specific role for the domain expert (e.g., "historian").
+#' @param prompts_dir Optional path to custom prompt templates.
+#' @param verbose Logical. Show progress and summary table.
+#' @param rpm Integer. Global requests per minute limit.
+#'
+#' @return S3 object of class "stance_result" with:
+#'   - summary: data.frame with results
+#'   - analysis: expert analysis results
+#'   - debates: debate results
+#'   - judgements: final judgements
+#'   - metadata: processing metadata
+#' @examples
+#' \dontrun{
+#' chat <- ellmer::chat_openai()
+#' result <- llm_stance(
+#'     text = "Climate change is not real",
+#'     target = "Climate Change is real",
+#'     chat_base = chat,
+#'     type = "statement",
+#'     language = "en"
+#' )
+#' print(result)
+#' summary(result)
+#' }
+#'
+#' ⁠@importFrom ellmer is_chat
+#' @export
 llm_stance.character <- function(
     text,
     target,
     chat_base,
-    type = c("object", "statement"),
+    type = c('object', 'statement'),
     language = rcola_available_languages(),
-    scale = c("categorical", "numeric", "likert"),
+    scale = c('categorical', 'numeric', 'likert'),
     domain_role = NULL,
     prompts_dir = NULL,
     verbose = TRUE,
     rpm = 20,
     ...
 ) {
-  # Implementation
+  ## Validation ----
+  tictoc::tic('Analysis')
+  
+  # Validate text and target
+  validate_character(text)
+  validate_character(target)
+  
+  n <- length(text)
+  
+  # Validate type
+  if (rlang::is_character(type)) {
+    type <- rlang::arg_match(type, c('object', 'statement'), multiple = TRUE)
+  } else {
+    cli::cli_abort(
+      "{.arg type} must be a character vector, got {.cls {class(type)}}"
+    )
+  }
+  
+  # Validate language
+  if (is.null(language) || length(language) > 1) {
+    language <- cld2::detect_language(text[[1]], lang_code = TRUE)
+    cli::cli_warn(
+      "The analysis language was automatically detected: {.val {language}}"
+    )
+  }
+  if (rlang::is_scalar_character(language)) {
+    if (!language %in% rcola_available_languages()) {
+      cli::cli_abort(
+        c(
+          "Language {.val {language}} not available",
+          "i" = "Use one of: {.val {rcola_available_languages()}}"
+        )
+      )
+    }
+  } else {
+    cli::cli_abort(
+      "{.arg language} must be a character scalar, got \
+            {.cls {class(language)}} of length {.val {length(language)}}"
+    )
+  }
+  
+  # Validate scale
+  scale <- rlang::arg_match(scale, c('categorical', 'numeric', 'likert'))
+  
+  # Validate domain_role
+  if (is.null(domain_role)) {
+    domain_role <- switch(
+      language,
+      uk = 'соціолог',
+      ru = 'социолог',
+      'social commentator'
+    )
+  } else {
+    if (!rlang::is_character(domain_role) || length(domain_role) < 1) {
+      cli::cli_abort(
+        "{.arg domain_role} must be a character vector, got {.cls {class(domain_role)}}"
+      )
+    }
+    if (!(length(domain_role) == 1 || length(domain_role) == n)) {
+      cli::cli_abort(
+        c(
+          "{.arg domain_role} must have length 1 or {n} (same as {.arg text})",
+          "x" = "Got {length(domain_role)}"
+        )
+      )
+    }
+  }
+  
+  if (length(domain_role) > 1) {
+    cli::cli_warn(
+      "Multiple domain roles detected. Parallel execution is unsupported."
+    )
+  }
+  
+  ### Chat Validation ----
+  # Validate and arrange the `chat_base` argument across stages
+  # 
+  # Recommendations (see vignette and docstrings):
+  # 1. Expert analysis (Stage 1):
+  #     - Excellent real-world awareness
+  #     - Decent reasoning skills
+  #     - Sufficient writing skills
+  #     - Context width depends on task
+  #     - Structured output: NOT required
+  # 2. Stance debates (Stage 2):
+  #     - Sufficient context width
+  #     - Creative and writing skills
+  #     - Structured output: NOT required
+  # 3. Stance decision (Stage 3):
+  #     - Large context width
+  #     - Excellent reasoning skills
+  #     - Excellent real-world awareness
+  #     - Structured output: REQUIRED
+  chats <- if (rlang::is_list(chat_base)) {
+    # Validate each element
+    for (i in seq_along(chat_base)) {
+      if (!ellmer:::is_chat(chat_base[[i]])) {
+        cli::cli_abort(
+          "Element {i} of {.arg chat_base} is not an {.cls ellmer::Chat} object"
+        )
+      }
+    }
+    
+    # Arrange based on list length
+    indices <- switch(
+      length(chat_base),
+      `1` = c(1, 1, 1),
+      `2` = c(1, 1, 2),
+      `3` = c(1, 2, 3),
+      cli::cli_abort(
+        c(
+          "{.arg chat_base} must have 1, 2, or 3 elements",
+          "x" = "You provided {length(chat_base)}"
+        )
+      )
+    )
+    lapply(indices, \(i) chat_base[[i]]$clone(deep = TRUE))
+    
+  } else if (ellmer:::is_chat(chat_base)) {
+    rep(list(chat_base$clone(deep = TRUE)), times = 3)
+    
+  } else {
+    cli::cli_abort(
+      c(
+        "{.arg chat_base} must be an {.cls ellmer::Chat} object or \ 
+                a list of 1-3 {.cls ellmer::Chat} objects",
+        "x" = "Got {.cls {class(chat_base)}}"
+      )
+    )
+  }
+  
+  ## Prompts ----
+  prompt_templates <- templates_collect(prompts_dir, language, scale)
+  
+  ## Preparation ----
+  target <- recycle_arg(target, n)
+  type <- recycle_arg(type, n)
+  
+  target_types <- sapply(type, type_to_term, language = language)
+  
+  inputs <- list(
+    texts = text,
+    targets = target,
+    types = type,
+    target_types = target_types,
+    language = language,
+    scale = scale,
+    domain_roles = domain_role,
+    prompt_templates = prompt_templates
+  )
+  
+  if (verbose) {
+    cat("\n")
+    cat(strrep("=", 70), "\n")
+    cat(glue::glue("\U1F50D STANCE ANALYSIS - Processing {n} item(s)"), "\n")
+    cat(strrep("=", 70), "\n\n")
+    cat(glue::glue("Types: {paste(unique(type), collapse = ', ')}"), "\n")
+    cat(glue::glue("Language: {language}"), "\n")
+    cat(
+      glue::glue("Domain roles: {paste(unique(domain_role), collapse = ', ')}"),
+      "\n"
+    )
+    cat("\n")
+  }
+  
+  ## Analysis ----
+  output <- inputs |>
+    stage_1_parallel_analysis(chats[[1]], verbose, rpm) |>
+    validate_stage('Stage 1 (Expert analysis)') |>
+    stage_2_parallel_debates(chats[[2]], verbose, rpm) |>
+    validate_stage('Stage 2 (Stance debates)') |>
+    stage_3_parallel_judgement(chats[[3]], verbose, rpm, ...)
+  
+  if (is.null(output$judgement_results) || nrow(output$judgement_results) != n) {
+    cli::cli_abort("Final stance judgement returned unexpected results")
+  }
+  
+  # Additional postprocessing of quantitative and Likert stance labels
+  if (scale == 'numeric') {
+    # output$judgement_results$stance <- truncate(
+    #     (output$judgement_results$stance - 50) / 50,
+    #     -1,
+    #     1
+    # )
+  } else if (scale == 'likert') {
+    output$judgement_results$stance <- factor(
+      output$judgement_results$stance,
+      levels = c(
+        'Strongly Disagree',
+        'Disagree',
+        'Neutral',
+        'Agree',
+        'Strongly Agree'
+      ),
+      ordered = TRUE
+    )
+  }
+  
+  ## Postprocessing ----
+  summary_df <- data.frame(
+    text = text,
+    target = target,
+    target_type = type,
+    language = language
+  ) |>
+    cbind(output$judgement_results) |>
+    tibble::as_tibble()
+  
+  if (verbose) {
+    cat("\U1F4CA Summary Table:\n")
+    print(summary_df)
+    cat("\n")
+    cat(strrep("=", 70), "\n")
+    toc <- tictoc::toc(func.toc = stage_complete, quiet = FALSE)
+    cat(strrep("=", 70), "\n\n")
+  } else {
+    toc <- tictoc::toc(func.toc = stage_complete, quiet = TRUE)
+  }
+  
+  ## Return ----
+  structure(
+    list(
+      summary = summary_df,
+      analysis = output$analysis_results,
+      debates = output$debate_results,
+      judgements = output$judgement_results,
+      metadata = list(
+        n_total = n,
+        n_processed = nrow(output$judgement_results),
+        n_failed = sum(is.na(output$judgement_results$stance)),
+        language = language,
+        types = unique(type),
+        domain_role = domain_role,
+        model = unique(sapply(chats, \(chat) chat$get_model())),
+        elapsed = toc$toc - toc$tic,
+        timestamp = Sys.time()
+      )
+    ),
+    class = c("stance_result", "list")
+  )
 }
 ```
 
@@ -4709,26 +4994,85 @@ llm_stance.character <- function(
 test_that('llm_stance.character is a function', {
   expect_true(inherits(llm_stance.character, 'function'))
 })
+
+test_that("llm_stance.character handles chat list and cloning", {
+  # Mocking all internal stages to avoid API calls
+  mockery::stub(llm_stance.character, "templates_collect", list())
+  mockery::stub(
+    llm_stance.character,
+    "stage_1_parallel_analysis",
+    function(x, ...) {
+      x$analysis_results <- list("Analysis results")
+      x
+    }
+  )
+  mockery::stub(llm_stance.character, "stage_2_parallel_debates", function(x, ...) x)
+  mockery::stub(llm_stance.character, "stage_3_parallel_judgement", function(x, ...) {
+    x$judgement_results <- data.frame(
+      stance = "Positive", explanation = "Content analysis results")
+    x
+  })
+  mockery::stub(llm_stance.character, "validate_stage", function(x, ...) x)
+  
+  # Use an empty Chat object
+  chat <- ellmer::chat_mistral()
+  
+  # Test with single chat
+  res <- llm_stance(
+    "Text mining is fun", "Text mining", type = "object",
+    chat_base = chat, verbose = FALSE, language = "en"
+  )
+  
+  expect_named(
+    res, c("summary", "analysis", "debates", "judgements", "metadata")
+  )
+  expect_equal(res$metadata$n_total, 1)
+  expect_s3_class(res, "stance_result")
+  
+  # Test with list of 1 chat
+  chat_list <- list(chat)
+  res_list <- llm_stance(
+    "Text mining is fun", "Text mining", type = "object",
+    chat_base = chat_list, verbose = FALSE, language = "en"
+  )
+  expect_named(
+    res_list, c("summary", "analysis", "debates", "judgements", "metadata")
+  )
+  expect_equal(res_list$metadata$n_total, 1)
+  expect_s3_class(res_list, "stance_result")
+  
+  # Test with list of 2 chats (Stage 1&2 use chat 1, Stage 3 uses chat 2)
+  chat_list <- list(chat, chat)
+  res_list <- llm_stance(
+    "Text mining is fun", "Text mining", type = "object",
+    chat_base = chat_list, verbose = FALSE, language = "en"
+  )
+  expect_named(
+    res_list, c("summary", "analysis", "debates", "judgements", "metadata")
+  )
+  expect_equal(res_list$metadata$n_total, 1)
+  expect_s3_class(res_list, "stance_result")
+  
+  # Test with list of 3 chats (Stage 1&2 use chat 1, Stage 3 uses chat 2)
+  chat_list <- list(chat, chat, chat)
+  res_list <- llm_stance(
+    "Text mining is fun", "Text mining", type = "object",
+    chat_base = chat_list, verbose = FALSE, language = "en"
+  )
+  expect_named(
+    res_list, c("summary", "analysis", "debates", "judgements", "metadata")
+  )
+  expect_equal(res_list$metadata$n_total, 1)
+  expect_s3_class(res_list, "stance_result")
+})
 ```
 
+### DATA.FRAME METHOD
+
 ```{r function-llm_stance.data.frame}
-#' Stance detection for data frames
-#'
-#' @param data Input data frame
-#' @param text Column name containing texts
-#' @param target Column name or vector of targets
-#' @param type Analysis type
-#' @param domain_role Optional domain role
-#' @param language Language code
-#' @param chat_base Chat model configuration
-#' @param scale Stance scale
-#' @param prompts_dir Optional custom prompts directory
-#' @param verbose Show progress
-#' @param rpm Requests per minute limit
-#' @param .output_col Name of output column
-#' @param ... Additional arguments
-#'
-#' @return Data frame with stance results
+#' @rdname llm_stance
+#' @param data ………
+#' @param .output_col Name of the column where results will be stored.
 #' @export
 
 llm_stance.data.frame <- function(
@@ -4739,14 +5083,119 @@ llm_stance.data.frame <- function(
     domain_role = NULL,
     language = NULL,
     chat_base,
-    scale = "categorical",
+    scale = 'categorical',
     prompts_dir = NULL,
     verbose = TRUE,
     rpm = 20,
-    .output_col = ".stance",
+    .output_col = '.stance',
     ...
 ) {
-  # Implementation
+  # Проверяем, что data это data.frame
+  if (!is.data.frame(data)) {
+    cli::cli_abort(
+      "{.arg data} must be a data.frame, got {.cls {class(data)}}"
+    )
+  }
+  
+  # Tidy evaluation
+  text_quo <- rlang::enquo(text)
+  target_quo <- rlang::enquo(target)
+  type_quo <- rlang::enquo(type)
+  language_quo <- rlang::enquo(language)
+  domain_role_quo <- rlang::enquo(domain_role)
+  
+  text_vec <- rlang::eval_tidy(text_quo, data)
+  target_vec <- rlang::eval_tidy(target_quo, data)
+  type_vec <- rlang::eval_tidy(type_quo, data)
+  language_vec <- rlang::eval_tidy(language_quo, data)
+  domain_role_vec <- rlang::eval_tidy(domain_role_quo, data)
+  
+  # Validation
+  if (is.null(text_vec)) {
+    cli::cli_abort(
+      c(
+        "Cannot find {.arg text} in data or environment",
+        "i" = "Use a column name or provide a vector"
+      )
+    )
+  }
+  
+  if (is.null(target_vec)) {
+    cli::cli_abort(
+      c(
+        "Cannot find {.arg target} in data or environment",
+        "i" = "Use a column name or provide a vector"
+      )
+    )
+  }
+  
+  # Fall-back to the defaults
+  if (rlang::is_null(type_vec)) {
+    type_vec <- c('object', 'statement')
+  }
+  
+  if (rlang::is_null(language_vec)) {
+    language_vec <- rcola_available_languages()
+  }
+  
+  if (rlang::is_null(domain_role_vec)) {
+    domain_role_vec <- NULL
+  }
+  
+  # Names for messages
+  text_name <- rlang::as_name(text_quo)
+  target_name <- rlang::as_name(target_quo)
+  
+  if (verbose) {
+    cli::cli_inform(
+      c(
+        "i" = "Processing {.val {text_name}} and {.val {target_name}} columns"
+      )
+    )
+  }
+  
+  result <- llm_stance(
+    text = text_vec,
+    target = target_vec,
+    type = type_vec,
+    language = language_vec,
+    domain_role = domain_role_vec,
+    chat_base = chat_base,
+    scale = scale,
+    prompts_dir = prompts_dir,
+    verbose = verbose,
+    rpm = rpm,
+    ...
+  )
+  
+  # Augment `data`
+  n_rows <- nrow(data)
+  n_results <- nrow(result$summary)
+  
+  if (n_results != n_rows) {
+    cli::cli_warn(
+      c(
+        "Result has {n_results} rows, but data has {n_rows} rows",
+        "i" = "Returning only matching rows"
+      )
+    )
+    result$summary <- result$summary[seq_len(min(n_rows, n_results)), ]
+  }
+  
+  data[[.output_col]] <- result$summary$stance
+  
+  attr(data, 'llm_stance_metadata') <- result$metadata
+  
+  if (verbose) {
+    cli::cli_inform(
+      c(
+        "v" = "Analysis complete!",
+        "i" = "Results added to {.val {(.output_col)}} column"
+      )
+    )
+  }
+  
+  return(data)
 }
 ```
 
@@ -4763,6 +5212,25 @@ llm_stance.data.frame <- function(
 ```{r tests-llm_stance.data.frame}
 test_that('llm_stance.data.frame is a function', {
   expect_true(inherits(llm_stance.data.frame, 'function'))
+})
+
+test_that("llm_stance.data.frame works with tidy evaluation", {
+  df <- data.frame(my_text = "I love R", my_target = "R language")
+  
+  # Mock the character method to return a dummy result
+  mock_res <- list(
+    summary = data.frame(stance = "Positive", explanation = "Text mining result"),
+    metadata = list(status = "ok")
+  )
+  mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
+  
+  res_df <- llm_stance(
+    df, my_text, my_target, chat_base = list(), .output_col = ".stance"
+  )
+  
+  expect_true(".stance" %in% names(res_df))
+  expect_equal(res_df$.stance, "Positive")
+  expect_equal(attr(res_df, "llm_stance_metadata")$status, "ok")
 })
 ```
 
