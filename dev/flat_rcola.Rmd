@@ -5065,6 +5065,16 @@ test_that("llm_stance.character handles chat list and cloning", {
   expect_equal(res_list$metadata$n_total, 1)
   expect_s3_class(res_list, "stance_result")
 })
+
+test_that("llm_stance.character aborts on invalid language", {
+  mockery::stub(llm_stance.character, "rcola_available_languages", c("en", "ru"))
+  
+  expect_error(
+    llm_stance("text", "target", chat_base = list(), language = "fr"),
+    regexp = "Language.+\"fr\".+not available",
+    fixed = FALSE
+  )
+})
 ```
 
 ### DATA.FRAME METHOD
