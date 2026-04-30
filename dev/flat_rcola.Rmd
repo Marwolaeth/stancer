@@ -726,7 +726,7 @@ catch_eval <- function(
             Got {.cls {class(quo)}}"
     )
   }
-  
+
   rlang::try_fetch(
     rlang::eval_tidy(quo, data),
     error = function(e) {
@@ -4498,9 +4498,9 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 #' Execute Stage 3: Judge synthesis
 #'
 #' @description
-#' Orchestrates the final stage of the analysis. It takes the results from all 
-#' three debate branches and uses a 'judge' agent to produce a structured 
-#' final stance judgement. This stage uses structured output to ensure the 
+#' Orchestrates the final stage of the analysis. It takes the results from all
+#' three debate branches and uses a 'judge' agent to produce a structured
+#' final stance judgement. This stage uses structured output to ensure the
 #' results follow a predefined schema.
 #'
 #' @param inputs A list containing:
@@ -4511,7 +4511,7 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 #' @param rpm Integer. Requests per minute limit for API calls.
 #' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
 #'
-#' @return The `inputs` list with an additional element `judgement_results`, 
+#' @return The `inputs` list with an additional element `judgement_results`,
 #'   containing the structured stance analysis.
 #'
 #' @keywords internal
@@ -5390,7 +5390,7 @@ test_that("llm_stance.character: likert scale post-processing", {
 #' @rdname llm_stance
 #' @param data A data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
 #' @param .output_col Name of the column where results will be stored.
-#' 
+#'
 #' @importFrom cli cli_abort cli_warn cli_inform
 #' @importFrom rlang is_null as_name
 #' @export
@@ -5631,10 +5631,10 @@ print.stance_result <- function(x, ...) {
     cat(glue::glue("Time elapsed: {round(x$metadata$elapsed, 2)} sec"), "\n")
     cat(glue::glue("Timestamp: {x$metadata$timestamp}"), "\n")
     cat(strrep("=", 60), "\n\n")
-    
+
     cat("Summary Table:\n")
     print(x$summary, ...)
-    
+
     invisible(x)
 }
 ```
@@ -5684,7 +5684,7 @@ test_that("print.stance_result outputs correct metadata and table", {
   expect_output(print(mock_res), "Model(s) used: gpt-4o", fixed = TRUE)
   expect_output(print(mock_res), "Time elapsed: 12.35 sec", fixed = TRUE) # Rounded
   expect_output(print(mock_res), "Summary Table:", fixed = TRUE)
-  
+
   # 3. Verify Invisible Return
   # Using capture.output to suppress printing during the check
   expect_invisible(val <- print(mock_res))
@@ -5712,7 +5712,7 @@ test_that("print.stance_result handles multiple models and roles", {
     ),
     class = c("stance_result", "list")
   )
-  
+
   # Check collapsed strings
   expect_output(print(mock_res), "Types: object, statement", fixed = TRUE)
   expect_output(print(mock_res), "Domain role(s): социолог, лингв", fixed = TRUE)
@@ -5739,10 +5739,10 @@ summary.stance_result <- function(object, ...) {
     cat("Stance Distribution:\n")
     print(table(object$summary$stance))
     cat("\n")
-    
+
     cat("By Target:\n")
     print(table(object$summary$target, object$summary$stance), ...)
-    
+
     invisible(object)
 }
 ```
@@ -5760,27 +5760,27 @@ test_that("summary.stance_result outputs distribution tables", {
         text = c("T1", "T2", "T3"),
         target = c("Target A", "Target A", "Target B"),
         stance = factor(
-          c("Negative", "Neutral", "Negative"), 
+          c("Negative", "Neutral", "Negative"),
           levels = c("Positive", "Neutral", "Negative")
         )
       )
     ),
     class = c("stance_result", "list")
   )
-  
+
   # 2. Verify Output Headers
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
   expect_output(summary(mock_res), "By Target:", fixed = TRUE)
-  
+
   # 3. Verify Table Content
   # Check for stance counts in the distribution table
   expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
   expect_output(summary(mock_res), "0        1        2", fixed = TRUE)
-  
+
   # Check for target-based cross-tabulation
   expect_output(summary(mock_res), "Target A", fixed = TRUE)
   expect_output(summary(mock_res), "Target B", fixed = TRUE)
-  
+
   # 4. Verify Invisible Return
   expect_invisible(val <- summary(mock_res))
   expect_equal(val, mock_res)
@@ -5799,7 +5799,7 @@ test_that("summary.stance_result handles empty or NA results", {
     ),
     class = c("stance_result", "list")
   )
-  
+
   # table() by default excludes NA, so we expect 0 counts but the headers should remain
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
   expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
@@ -5812,10 +5812,13 @@ test_that("summary.stance_result handles empty or NA results", {
 ```{r function-as.data.frame.stance_result}
 #' Convert stance_result to data frame
 #'
-#' @param x stance_result object
-#' @param row.names Optional row names
-#' @param optional Logical
-#' @param ... Additional arguments
+#' @description
+#' Extracts the summary table from a `stance_result` object and returns it as
+#' a data frame. This allows for easy further analysis using standard R tools.
+#' @param x A `stance_result` object
+#' @param row.names Optional NULL or a character vector giving the row names for the data frame. Missing values are not allowed.
+#' @param optional Logical. If TRUE, setting row names and converting column names to syntactic names is optional.
+#' @param ... Additional arguments passed to [base::as.data.frame()].
 #'
 #' @return Data frame
 #' @export
@@ -5826,18 +5829,69 @@ as.data.frame.stance_result <- function(
     optional = FALSE,
     ...
 ) {
-  # Implementation
+  x$summary
 }
-```
-
-```{r examples-as.data.frame.stance_result}
-# result <- llm_stance(...)
-# df <- as.data.frame(result)
 ```
 
 ```{r tests-as.data.frame.stance_result}
 test_that('as.data.frame.stance_result is a function', {
   expect_true(inherits(as.data.frame.stance_result, 'function'))
+})
+
+test_that("as.data.frame.stance_result extracts summary correctly", {
+  # 1. Set-up Mock Object
+  mock_summary <- data.frame(
+    text = "R is smart and tidy",
+    target = "R is good",
+    type = "statement",
+    stance = "Positive",
+    explanation = "AI Content Analysis Reasoning",
+    stringsAsFactors = FALSE
+  )
+
+  mock_res <- structure(
+    list(
+      summary = mock_summary,
+      metadata = list(n_total = 1)
+    ),
+    class = c("stance_result", "list")
+  )
+
+  # 2. Test conversion
+  df_result <- as.data.frame(mock_res)
+
+  expect_s3_class(df_result, "data.frame")
+  expect_equal(nrow(df_result), 1)
+  expect_equal(df_result$stance, "Positive")
+  expect_equal(df_result, mock_summary)
+})
+
+test_that("as.data.frame.stance_result works with pipes", {
+  # This is a common use case for users
+  mock_res <- structure(
+    list(
+      summary = data.frame(a = 1:3, b = 4:6)
+    ),
+    class = c("stance_result", "list")
+  )
+
+  # Check if it behaves correctly in a functional chain
+  res <- mock_res |>
+    as.data.frame() |>
+    nrow()
+
+  expect_equal(res, 3)
+})
+
+test_that("as.data.frame.stance_result ignores additional arguments gracefully", {
+  # Since our implementation just returns x$summary, we check it doesn't crash
+  # if standard as.data.frame arguments are passed
+  mock_res <- structure(
+    list(summary = data.frame(a = 1)),
+    class = c("stance_result", "list")
+  )
+
+  expect_no_error(as.data.frame(mock_res, row.names = "1", optional = TRUE))
 })
 ```
 
