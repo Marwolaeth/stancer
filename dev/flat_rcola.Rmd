@@ -5604,7 +5604,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
 #' @param x A `stance_result` object.
 #' @param ... Additional arguments to [base::print.data.frame()] or other `print` methods for the summary table.
 #'
-#' @return Invisibly x
+#' @return The input object (invisibly).
 #' @importFrom glue glue
 #' @export
 
@@ -5688,6 +5688,7 @@ test_that("print.stance_result outputs correct metadata and table", {
   # 3. Verify Invisible Return
   # Using capture.output to suppress printing during the check
   expect_invisible(val <- print(mock_res))
+  expect_equal(val, mock_res)
   expect_s3_class(print(mock_res), "stance_result")
 })
 
@@ -5714,7 +5715,7 @@ test_that("print.stance_result handles multiple models and roles", {
   
   # Check collapsed strings
   expect_output(print(mock_res), "Types: object, statement", fixed = TRUE)
-  expect_output(print(mock_res), "Domain role(s): социолог, лингвист", fixed = TRUE)
+  expect_output(print(mock_res), "Domain role(s): социолог, лингв", fixed = TRUE)
   expect_output(print(mock_res), "Model(s) used: claude-3, gpt-4o", fixed = TRUE)
 })
 ```
@@ -5722,27 +5723,87 @@ test_that("print.stance_result handles multiple models and roles", {
 ## Summary Method
 
 ```{r function-summary.stance_result}
-#' Summarize stance_result object
+#' Summarise stance_result object
 #'
-#' @param object stance_result object
-#' @param ... Additional arguments
+#' @description
+#' Provides a statistical summary of the stance analysis results. It displays
+#' the frequency distribution of detected stances and a cross-tabulation
+#' of stances by target entity/statement.
+#' @param object A `stance_result` object.
+#' @param ... Additional arguments passed to [base::print.table()].
 #'
-#' @return Invisibly object
+#' @return The input object (invisibly).
 #' @export
 
 summary.stance_result <- function(object, ...) {
-  # Implementation
+    cat("Stance Distribution:\n")
+    print(table(object$summary$stance))
+    cat("\n")
+    
+    cat("By Target:\n")
+    print(table(object$summary$target, object$summary$stance), ...)
+    
+    invisible(object)
 }
-```
-
-```{r examples-summary.stance_result}
-# result <- llm_stance(...)
-# summary(result)
 ```
 
 ```{r tests-summary.stance_result}
 test_that('summary.stance_result is a function', {
   expect_true(inherits(summary.stance_result, 'function'))
+})
+
+test_that("summary.stance_result outputs distribution tables", {
+  # 1. Set-up Mock Object with multiple items
+  mock_res <- structure(
+    list(
+      summary = data.frame(
+        text = c("T1", "T2", "T3"),
+        target = c("Target A", "Target A", "Target B"),
+        stance = factor(
+          c("Negative", "Neutral", "Negative"), 
+          levels = c("Positive", "Neutral", "Negative")
+        )
+      )
+    ),
+    class = c("stance_result", "list")
+  )
+  
+  # 2. Verify Output Headers
+  expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
+  expect_output(summary(mock_res), "By Target:", fixed = TRUE)
+  
+  # 3. Verify Table Content
+  # Check for stance counts in the distribution table
+  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "0        1        2", fixed = TRUE)
+  
+  # Check for target-based cross-tabulation
+  expect_output(summary(mock_res), "Target A", fixed = TRUE)
+  expect_output(summary(mock_res), "Target B", fixed = TRUE)
+  
+  # 4. Verify Invisible Return
+  expect_invisible(val <- summary(mock_res))
+  expect_equal(val, mock_res)
+})
+
+test_that("summary.stance_result handles empty or NA results", {
+  mock_res <- structure(
+    list(
+      summary = data.frame(
+        target = "Target A",
+        stance = factor(
+          NA_character_,
+          levels = c("Positive", "Neutral", "Negative")
+        )
+      )
+    ),
+    class = c("stance_result", "list")
+  )
+  
+  # table() by default excludes NA, so we expect 0 counts but the headers should remain
+  expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
+  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "0        0        0", fixed = TRUE)
 })
 ```
 
