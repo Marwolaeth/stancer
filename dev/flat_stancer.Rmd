@@ -30,9 +30,7 @@ fusen::fill_description(
 )
 # Define License with use_*_license()
 usethis::use_ccby_license()
-```
 
-```{r development-function}
 usethis::use_package('ellmer')
 usethis::use_package('yaml')
 usethis::use_package('glue')
@@ -46,27 +44,35 @@ usethis::use_package('cld2', type = "Suggests")
 
 ## Overview
 
-**stancer** is an R implementation of the COLA (**C**ollaborative r**O**Le-infused **L**LM-based **A**gents) framework for automated stance detection in texts.
+**stancer** provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) to determine whether a text is in favour of, against, or neutral towards a specific target.
 
-The package employs a three-stage collaborative approach:
-
-1. **Stage 1: Parallel Analysis** — Specialised LLM-based agents (linguist, domain expert, social interpreter) analyse texts from their respective perspectives
-2. **Stage 2: Parallel Debates** — Agents debate their analyses to reach consensus
-3. **Stage 3: Parallel judgement** — A judge agent synthesises the debate and produces final stance classification
-
-## Key Features
-
-- 🤖 Multi-perspective analysis using collaborative LLM agents
-- 🌍 Support for multiple languages
-- 📊 Multiple stance scales (categorical, numeric, Likert)
-- 🎯 Domain-specific analysis with custom roles
-- 📈 Batch processing for data frames
-- 🔍 Detailed inspection tools for results
+The package is built upon the **COLA** (Collaborative rOle-infused LLM-based Agents) framework proposed by @lan2024stancedetectioncollaborativeroleinfused. Instead of a single prompt, `stancer` coordinates a team of LLM agents—linguists, domain experts, and social media specialists—who analyse the text and debate its meaning before reaching a final judgement.
 
 ## Quick Example
 
 ```r
+library(stancer)
+library(ellmer)
 
+# Set up your LLM client
+chat <- chat_anthropic()
+
+text <- "The carbon tax is just another way for the government to control our lives and stifle economic growth."
+target <- "Climate Change mitigation policies"
+
+result <- llm_stance(
+  text,
+  target,
+  type = "object", # stance towards a given object or entity 
+  # type = "statement", # whether a text agrees with a certain statement
+  chat_base = chat,
+  domain_role = "economic analyst"
+)
+
+# View the summary
+summary(result)
+as.data.frame(result)
+inspect(result, "analysis", "linguistic")
 ```
 
 ---
