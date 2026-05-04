@@ -9,10 +9,10 @@ inspect(x, ...)
 \arguments{
 \item{x}{A \code{stance_result} object.}
 
-\item{...}{Additional arguments passed to methods}
+\item{...}{Additional arguments passed to methods.}
 }
 \value{
-Invisibly x
+The input object (invisibly).
 }
 \description{
 Inspect stance_result contents

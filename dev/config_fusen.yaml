@@ -61,7 +61,7 @@ flat_stancer.Rmd:
   inflate:
     flat_file: dev/flat_stancer.Rmd
     vignette_name: Get started
-    open_vignette: true
+    open_vignette: false
     check: true
     document: true
     overwrite: ask

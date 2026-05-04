@@ -190,7 +190,7 @@ test_that("llm_stance.character: chat_base list length validation", {
   # Error for 4 chats
   expect_error(
     llm_stance(
-      text = "T",
+      x = "T",
       target = "T",
       language = "en",
       chat_base = list(chat, chat, chat, chat),
@@ -203,7 +203,7 @@ test_that("llm_stance.character: chat_base list length validation", {
   # Error for invalid object type
   expect_error(
     llm_stance(
-      text = "T",
+      x = "T",
       target = "T",
       chat_base = "not a chat",
       language = "en",
@@ -244,7 +244,7 @@ test_that("llm_stance.character: domain_role length validation", {
   # n = 2, but domain_role = 3
   expect_error(
     llm_stance(
-      text = c("T1", "T2"),
+      x = c("T1", "T2"),
       target = "Target",
       chat_base = ellmer::chat_mistral(echo = "none"),
       language = "en",
@@ -283,7 +283,7 @@ test_that("llm_stance.character: likert scale post-processing", {
     })
 
   res <- llm_stance(
-    text = "T",
+    x = "T",
     target = "T",
     type = "statement",
     chat_base = ellmer::chat_mistral(echo = "none"),
@@ -302,7 +302,7 @@ test_that('llm_stance.data.frame is a function', {
 })
 
 test_that('llm_stance.data.frame rejects wrong `data` argument', {
-  expect_error(llm_stance(data = list()), "no applicable method", fixed = TRUE)
+  expect_error(llm_stance(x = list()), "no applicable method", fixed = TRUE)
 })
 
 test_that("llm_stance.data.frame works with tidy evaluation", {
@@ -334,7 +334,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
   # 1. Missing column error
   expect_error(
     llm_stance(
-      data = df,
+      df,
       text = non_existent,
       target = band,
       type = "object",
@@ -361,7 +361,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
 
   expect_warning(
     df_stance <- llm_stance(
-      data = df_long,
+      df_long,
       text = txt,
       target = trg,
       language = "uk",

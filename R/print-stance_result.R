@@ -14,7 +14,7 @@
 #' @export
 #' @examples
 #' # result <- llm_stance(
-#' #   text = "R is smart and tidy",
+#' #   x = "R is smart and tidy",
 #' #   target = "R programming language",
 #' #   chat_base = ellmer::chat_anthropic()
 #' # )

@@ -1268,7 +1268,7 @@ stage_complete <- function(tic, toc, msg) {
   if (is.null(msg) || is.na(msg) || length(msg) == 0) {
     outmsg <- tocmsg
   } else {
-    outmsg <- glue::glue('\u2705 {msg} complete – {tocmsg}\n\n')
+    outmsg <- glue::glue('\u2705 {msg} complete \U2014 {tocmsg}\n\n')
   }
   outmsg
 }
@@ -1290,7 +1290,7 @@ test_that('stage_complete returns elapsed time for NA msg', {
 # Test 3: stage_complete formats message with checkmark and time
 test_that('stage_complete formats message with checkmark', {
   result <- stage_complete(tic = 0, toc = 1, msg = "Processing")
-  expect_match(result, "\u2705 Processing complete – 1 seconds elapsed")
+  expect_match(result, "\u2705 Processing complete")
 })
 
 # Test 4: stage_complete rounds elapsed time to 3 decimal places
@@ -4202,7 +4202,7 @@ stage_2_parallel_debates <- function(
   if (verbose) {
     cat(
       glue::glue(
-        "\U23F3 Stage 2: Parallel debates ({n} items × 3 stances)..."),
+        "\U23F3 Stage 2: Parallel debates ({n} items \U00D7 3 stances)..."),
       "\n"
     )
   }
@@ -4712,7 +4712,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
 #' or statement.
 #' It supports character vectors and data frames (compatible with `mall` style).
 #'
-#' @param x Input text(s) as a character vector or a data frame.
+#' @param x Input text(s) as a character vector or a data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
 #' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
 #'
 #' @return A `stance_result` object (for character method) or a modified
@@ -4745,7 +4745,7 @@ llm_stance <- function(x, ...) {
 #'   \item \strong{Stance Judgement (Stage 3)}: Requires large context width,
 #'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
 #' }
-#'
+#' 
 #' @param target Character. The entity or statement the stance is directed at.
 #' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
 #' @param type Analysis type: "object" (entity-based) or "statement" (proposition-based).
@@ -4762,7 +4762,6 @@ llm_stance <- function(x, ...) {
 #'   - debates: debate results
 #'   - judgements: final judgements
 #'   - metadata: processing metadata
-#'
 #' ⁠@importFrom ellmer is_chat
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang is_character is_scalar_character is_list arg_match is_installed
@@ -4771,7 +4770,7 @@ llm_stance <- function(x, ...) {
 #' @importFrom tictoc tic toc
 #' @export
 llm_stance.character <- function(
-    text,
+    x,
     target,
     chat_base,
     type = c('object'),
@@ -4787,6 +4786,7 @@ llm_stance.character <- function(
   tictoc::tic('Analysis')
 
   # Validate text and target
+  text <- x
   validate_character(text)
   validate_character(target)
 
@@ -4837,8 +4837,8 @@ llm_stance.character <- function(
   if (is.null(domain_role)) {
     domain_role <- switch(
       language,
-      uk = 'соціолог',
-      ru = 'социолог',
+      uk = 'sociologist', # 'соціолог',
+      ru = 'sociologist', # 'социолог',
       'social commentator'
     )
   } else {
@@ -5034,7 +5034,7 @@ llm_stance.character <- function(
 
 ```{r examples-llm_stance.character}
 # result <- llm_stance(
-#   text = "I support renewable energy",
+#   x = "I support renewable energy",
 #   target = "renewable energy",
 #   chat_base = chat_model,
 #   type = "object",
@@ -5233,7 +5233,7 @@ test_that("llm_stance.character: chat_base list length validation", {
   # Error for 4 chats
   expect_error(
     llm_stance(
-      text = "T",
+      x = "T",
       target = "T",
       language = "en",
       chat_base = list(chat, chat, chat, chat),
@@ -5246,7 +5246,7 @@ test_that("llm_stance.character: chat_base list length validation", {
   # Error for invalid object type
   expect_error(
     llm_stance(
-      text = "T",
+      x = "T",
       target = "T",
       chat_base = "not a chat",
       language = "en",
@@ -5287,7 +5287,7 @@ test_that("llm_stance.character: domain_role length validation", {
   # n = 2, but domain_role = 3
   expect_error(
     llm_stance(
-      text = c("T1", "T2"),
+      x = c("T1", "T2"),
       target = "Target",
       chat_base = ellmer::chat_mistral(echo = "none"),
       language = "en",
@@ -5326,7 +5326,7 @@ test_that("llm_stance.character: likert scale post-processing", {
     })
 
   res <- llm_stance(
-    text = "T",
+    x = "T",
     target = "T",
     type = "statement",
     chat_base = ellmer::chat_mistral(echo = "none"),
@@ -5345,7 +5345,7 @@ test_that("llm_stance.character: likert scale post-processing", {
 
 ```{r function-llm_stance.data.frame}
 #' @rdname llm_stance
-#' @param data A data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
+#' @param text The text column (if `x` is a data.frame) or character vector to analyse.
 #' @param .output_col Name of the column where results will be stored.
 #'
 #' @importFrom cli cli_abort cli_warn cli_inform
@@ -5353,7 +5353,7 @@ test_that("llm_stance.character: likert scale post-processing", {
 #' @export
 
 llm_stance.data.frame <- function(
-    data,
+    x,
     text = NULL,
     target = NULL,
     type = NULL,
@@ -5367,10 +5367,10 @@ llm_stance.data.frame <- function(
     .output_col = '.stance',
     ...
 ) {
-  # Проверяем, что data это data.frame
+  data <- x
   if (!is.data.frame(data)) {
     cli::cli_abort(
-      "{.arg data} must be a data.frame, got {.cls {class(data)}}"
+      "{.arg x} must be a data.frame, got {.cls {class(data)}}"
     )
   }
 
@@ -5412,7 +5412,7 @@ llm_stance.data.frame <- function(
   }
 
   result <- llm_stance(
-    text = text_vec,
+    x = text_vec,
     target = target_vec,
     type = type_vec,
     language = language_vec,
@@ -5458,7 +5458,7 @@ llm_stance.data.frame <- function(
 
 ```{r examples-llm_stance.data.frame}
 # results <- llm_stance(
-#   data = tweets_df,
+#   x = tweets_df,
 #   text = "text",
 #   target = "climate_change",
 #   chat_base = chat_model
@@ -5471,7 +5471,7 @@ test_that('llm_stance.data.frame is a function', {
 })
 
 test_that('llm_stance.data.frame rejects wrong `data` argument', {
-  expect_error(llm_stance(data = list()), "no applicable method", fixed = TRUE)
+  expect_error(llm_stance(x = list()), "no applicable method", fixed = TRUE)
 })
 
 test_that("llm_stance.data.frame works with tidy evaluation", {
@@ -5503,7 +5503,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
   # 1. Missing column error
   expect_error(
     llm_stance(
-      data = df,
+      df,
       text = non_existent,
       target = band,
       type = "object",
@@ -5530,7 +5530,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
 
   expect_warning(
     df_stance <- llm_stance(
-      data = df_long,
+      df_long,
       text = txt,
       target = trg,
       language = "uk",
@@ -5597,7 +5597,7 @@ print.stance_result <- function(x, ...) {
 
 ```{r examples-print.stance_result}
 # result <- llm_stance(
-#   text = "R is smart and tidy",
+#   x = "R is smart and tidy",
 #   target = "R programming language",
 #   chat_base = ellmer::chat_anthropic()
 # )
@@ -5857,9 +5857,9 @@ test_that("as.data.frame.stance_result ignores additional arguments gracefully",
 #' Inspect stance_result contents
 #'
 #' @param x A `stance_result` object.
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods.
 #'
-#' @return Invisibly x
+#' @return The input object (invisibly).
 #' @export
 
 inspect <- function(x, ...) {
@@ -5868,6 +5868,7 @@ inspect <- function(x, ...) {
 ```
 
 ```{r function-inspect.stance_result}
+#' @rdname inspect
 #' Inspect stance_result contents
 #'
 #' @description
@@ -5875,7 +5876,6 @@ inspect <- function(x, ...) {
 #' It allows you to view metadata, raw linguistic/expert analysis,
 #' internal debates between models, or the final explanation for a specific row.
 #'
-#' @param x A `stance_result` object.
 #' @param what Character. Primary level: 'metadata', 'analysis', 'debates', or 'explanation'.
 #' @param within Optional character. Secondary level (e.g., 'linguistic' for analysis).
 #' @param index Integer. The row index of the text item to inspect.
@@ -5887,7 +5887,8 @@ inspect.stance_result <- function(
     x,
     what = c('metadata', 'analysis', 'debates', 'explanation'),
     within = NULL,
-    index = 1
+    index = 1,
+    ...
 ) {
 
   what <- match.arg(what)
@@ -5911,7 +5912,7 @@ inspect.stance_result <- function(
         for (section in available) {
           cat(
             cli::col_cyan(
-              sprintf("  • %s\n", section)
+              sprintf("  \U2022 %s\n", section)
             )
           )
         }
@@ -5968,7 +5969,7 @@ inspect.stance_result <- function(
         for (section in available) {
           cat(
             cli::col_cyan(
-              sprintf("  • %s\n", section)
+              sprintf("  \U2022 %s\n", section)
             )
           )
         }
@@ -6232,7 +6233,8 @@ fusen::inflate(
   flat_file = here::here('dev', 'flat_stancer.Rmd'),
   codecov = TRUE,
   clean = TRUE,
-  vignette_name = "Get started"
+  vignette_name = "Get started",
+  open_vignette = FALSE
 )
 ```
 

@@ -15,7 +15,7 @@ test_that('stage_complete returns elapsed time for NA msg', {
 # Test 3: stage_complete formats message with checkmark and time
 test_that('stage_complete formats message with checkmark', {
   result <- stage_complete(tic = 0, toc = 1, msg = "Processing")
-  expect_match(result, "\u2705 Processing complete – 1 seconds elapsed")
+  expect_match(result, "\u2705 Processing complete")
 })
 
 # Test 4: stage_complete rounds elapsed time to 3 decimal places

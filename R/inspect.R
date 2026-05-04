@@ -3,15 +3,16 @@
 #' Inspect stance_result contents
 #'
 #' @param x A `stance_result` object.
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods.
 #'
-#' @return Invisibly x
+#' @return The input object (invisibly).
 #' @export
 
 inspect <- function(x, ...) {
   UseMethod("inspect")
 }
 
+#' @rdname inspect
 #' Inspect stance_result contents
 #'
 #' @description
@@ -19,7 +20,6 @@ inspect <- function(x, ...) {
 #' It allows you to view metadata, raw linguistic/expert analysis,
 #' internal debates between models, or the final explanation for a specific row.
 #'
-#' @param x A `stance_result` object.
 #' @param what Character. Primary level: 'metadata', 'analysis', 'debates', or 'explanation'.
 #' @param within Optional character. Secondary level (e.g., 'linguistic' for analysis).
 #' @param index Integer. The row index of the text item to inspect.
@@ -36,7 +36,8 @@ inspect.stance_result <- function(
     x,
     what = c('metadata', 'analysis', 'debates', 'explanation'),
     within = NULL,
-    index = 1
+    index = 1,
+    ...
 ) {
 
   what <- match.arg(what)
@@ -60,7 +61,7 @@ inspect.stance_result <- function(
         for (section in available) {
           cat(
             cli::col_cyan(
-              sprintf("  • %s\n", section)
+              sprintf("  \U2022 %s\n", section)
             )
           )
         }
@@ -117,7 +118,7 @@ inspect.stance_result <- function(
         for (section in available) {
           cat(
             cli::col_cyan(
-              sprintf("  • %s\n", section)
+              sprintf("  \U2022 %s\n", section)
             )
           )
         }

@@ -9,7 +9,7 @@
 llm_stance(x, ...)
 
 \method{llm_stance}{character}(
-  text,
+  x,
   target,
   chat_base,
   type = c("object"),
@@ -23,7 +23,7 @@ llm_stance(x, ...)
 )
 
 \method{llm_stance}{data.frame}(
-  data,
+  x,
   text = NULL,
   target = NULL,
   type = NULL,
@@ -39,7 +39,7 @@ llm_stance(x, ...)
 )
 }
 \arguments{
-\item{x}{Input text(s) as a character vector or a data frame.}
+\item{x}{Input text(s) as a character vector or a data.frame containing (any of) \code{text}, \code{target}, \code{type}, \code{domain_role} or \code{language} arguments.}
 
 \item{...}{Additional arguments passed to \code{ellmer::parallel_chat_structured}.}
 
@@ -61,7 +61,7 @@ llm_stance(x, ...)
 
 \item{rpm}{Integer. Global requests per minute limit.}
 
-\item{data}{A data.frame containing (any of) \code{text}, \code{target}, \code{type}, \code{domain_role} or \code{language} arguments.}
+\item{text}{The text column (if \code{x} is a data.frame) or character vector to analyse.}
 
 \item{.output_col}{Name of the column where results will be stored.}
 }
@@ -76,9 +76,8 @@ S3 object of class "stance_result" with:
 \item debates: debate results
 \item judgements: final judgements
 \item metadata: processing metadata
-}
-
 ⁠@importFrom ellmer is_chat
+}
 }
 \description{
 \code{llm_stance()} implements a multi-stage "Collaborative rOle-infused LLM-based
@@ -109,14 +108,14 @@ superior reasoning, and \strong{MUST} support structured output (JSON mode).
 }
 \examples{
 # result <- llm_stance(
-#   text = "I support renewable energy",
+#   x = "I support renewable energy",
 #   target = "renewable energy",
 #   chat_base = chat_model,
 #   type = "object",
 #   scale = "categorical"
 # )
 # results <- llm_stance(
-#   data = tweets_df,
+#   x = tweets_df,
 #   text = "text",
 #   target = "climate_change",
 #   chat_base = chat_model

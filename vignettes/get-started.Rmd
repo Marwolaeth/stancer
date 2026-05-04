@@ -251,7 +251,7 @@ stancer_check_translations()
 
 ```{r examples-llm_stance.character}
 # result <- llm_stance(
-#   text = "I support renewable energy",
+#   x = "I support renewable energy",
 #   target = "renewable energy",
 #   chat_base = chat_model,
 #   type = "object",
@@ -265,7 +265,7 @@ stancer_check_translations()
 
 ```{r examples-llm_stance.data.frame}
 # results <- llm_stance(
-#   data = tweets_df,
+#   x = tweets_df,
 #   text = "text",
 #   target = "climate_change",
 #   chat_base = chat_model
@@ -282,7 +282,7 @@ stancer_check_translations()
 
 ```{r examples-print.stance_result}
 # result <- llm_stance(
-#   text = "R is smart and tidy",
+#   x = "R is smart and tidy",
 #   target = "R programming language",
 #   chat_base = ellmer::chat_anthropic()
 # )

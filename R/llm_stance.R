@@ -8,7 +8,7 @@
 #' or statement.
 #' It supports character vectors and data frames (compatible with `mall` style).
 #'
-#' @param x Input text(s) as a character vector or a data frame.
+#' @param x Input text(s) as a character vector or a data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
 #' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
 #'
 #' @return A `stance_result` object (for character method) or a modified
@@ -37,7 +37,7 @@ llm_stance <- function(x, ...) {
 #'   \item \strong{Stance Judgement (Stage 3)}: Requires large context width,
 #'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
 #' }
-#'
+#' 
 #' @param target Character. The entity or statement the stance is directed at.
 #' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
 #' @param type Analysis type: "object" (entity-based) or "statement" (proposition-based).
@@ -54,7 +54,6 @@ llm_stance <- function(x, ...) {
 #'   - debates: debate results
 #'   - judgements: final judgements
 #'   - metadata: processing metadata
-#'
 #' ⁠@importFrom ellmer is_chat
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang is_character is_scalar_character is_list arg_match is_installed
@@ -64,14 +63,14 @@ llm_stance <- function(x, ...) {
 #' @export
 #' @examples
 #' # result <- llm_stance(
-#' #   text = "I support renewable energy",
+#' #   x = "I support renewable energy",
 #' #   target = "renewable energy",
 #' #   chat_base = chat_model,
 #' #   type = "object",
 #' #   scale = "categorical"
 #' # )
 llm_stance.character <- function(
-    text,
+    x,
     target,
     chat_base,
     type = c('object'),
@@ -87,6 +86,7 @@ llm_stance.character <- function(
   tictoc::tic('Analysis')
 
   # Validate text and target
+  text <- x
   validate_character(text)
   validate_character(target)
 
@@ -137,8 +137,8 @@ llm_stance.character <- function(
   if (is.null(domain_role)) {
     domain_role <- switch(
       language,
-      uk = 'соціолог',
-      ru = 'социолог',
+      uk = 'sociologist', # 'соціолог',
+      ru = 'sociologist', # 'социолог',
       'social commentator'
     )
   } else {
@@ -332,7 +332,7 @@ llm_stance.character <- function(
 }
 
 #' @rdname llm_stance
-#' @param data A data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
+#' @param text The text column (if `x` is a data.frame) or character vector to analyse.
 #' @param .output_col Name of the column where results will be stored.
 #'
 #' @importFrom cli cli_abort cli_warn cli_inform
@@ -340,14 +340,14 @@ llm_stance.character <- function(
 #' @export
 #' @examples
 #' # results <- llm_stance(
-#' #   data = tweets_df,
+#' #   x = tweets_df,
 #' #   text = "text",
 #' #   target = "climate_change",
 #' #   chat_base = chat_model
 #' # )
 
 llm_stance.data.frame <- function(
-    data,
+    x,
     text = NULL,
     target = NULL,
     type = NULL,
@@ -361,10 +361,10 @@ llm_stance.data.frame <- function(
     .output_col = '.stance',
     ...
 ) {
-  # Проверяем, что data это data.frame
+  data <- x
   if (!is.data.frame(data)) {
     cli::cli_abort(
-      "{.arg data} must be a data.frame, got {.cls {class(data)}}"
+      "{.arg x} must be a data.frame, got {.cls {class(data)}}"
     )
   }
 
@@ -406,7 +406,7 @@ llm_stance.data.frame <- function(
   }
 
   result <- llm_stance(
-    text = text_vec,
+    x = text_vec,
     target = target_vec,
     type = type_vec,
     language = language_vec,

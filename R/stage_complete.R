@@ -17,7 +17,7 @@ stage_complete <- function(tic, toc, msg) {
   if (is.null(msg) || is.na(msg) || length(msg) == 0) {
     outmsg <- tocmsg
   } else {
-    outmsg <- glue::glue('\u2705 {msg} complete – {tocmsg}\n\n')
+    outmsg <- glue::glue('\u2705 {msg} complete \U2014 {tocmsg}\n\n')
   }
   outmsg
 }

@@ -1,6 +1,6 @@
 ---
 output: github_document
-bibliography: references.bib
+bibliography: dev/references.bib
 link-citations: true
 ---
 

@@ -40,7 +40,7 @@ stage_2_parallel_debates <- function(
   if (verbose) {
     cat(
       glue::glue(
-        "\U23F3 Stage 2: Parallel debates ({n} items × 3 stances)..."),
+        "\U23F3 Stage 2: Parallel debates ({n} items \U00D7 3 stances)..."),
       "\n"
     )
   }
