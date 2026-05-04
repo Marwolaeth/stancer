@@ -1,5 +1,7 @@
 ---
 output: github_document
+bibliography: references.bib
+link-citations: true
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -20,11 +22,13 @@ knitr::opts_chunk$set(
 [![Codecov test coverage](https://codecov.io/gh/Marwolaeth/stancer/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/stancer)
 <!-- badges: end -->
 
-R package for sentiment and stance analysis using the COLA framework
+Stance Analysis using Ensemble of LLM Agents through `ellmer`
 
 ## Overview
 
-**stancer** is an R implementation of the COLA (**C**ollaborative r**O**le-infused **L**LM-based **A**gents – see Lan et al. (2024)) framework for automated stance detection in texts. The package employs a three-stage collaborative approach where specialised LLM-based agents analyse texts from linguistic, domain-specific, and social perspectives to determine whether an author's position is in favour, against, or neutral towards a given target.
+**stancer** provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) to determine whether a text is in favour of, against, or neutral towards a specific target.
+
+The package is built upon the **COLA** (Collaborative rOle-infused LLM-based Agents) framework proposed by @lan2024stancedetectioncollaborativeroleinfused. Instead of a single prompt, `stancer` coordinates a team of LLM agents—linguists, domain experts, and social media specialists—who analyse the text and debate its meaning before reaching a final judgement.
 
 ## Installation
 
@@ -35,39 +39,118 @@ You can install the development version of stancer from [GitHub](https://github.
 pak::pak("Marwolaeth/stancer")
 ```
 
-## Example
+## How it works: The COLA Framework
 
-This is a basic example which shows you how to solve a common problem:
+Following the approach by @lan2024stancedetectioncollaborativeroleinfused, `stancer` breaks down stance detection into three distinct stages:
 
-```{r example, eval=FALSE}
+1.  **Multidimensional Analysis**: Three specialised agents (Linguistic, Domain, and Social) analyse the text's style, terminology, and context.
+2.  **Reasoning-Enhanced Debate**: For each possible stance (Positive/Neutral/Negative), an agent is assigned to argue why the text might fit that category. This helps uncover implicit viewpoints that a simple analysis might miss.
+3.  **Stance Conclusion**: A final decision-maker reviews the analyses and the debate to provide a reasoned judgement and a final score.
+
+## Supported Languages
+
+`stancer` includes built-in, hand-crafted prompts for the following languages:
+
+- **English** (`"en"`)
+- **Ukrainian** (`"uk"`)
+- **Russian** (`"ru"`)
+
+The package automatically detects the language of your text (using `cld2` if available) or allows you to specify it manually in `llm_stance()`.
+
+## Usage
+
+`stancer` works with chat objects from the [ellmer](https://ellmer.tidyverse.org/) package. This gives you the flexibility to use any supported model (OpenAI, Anthropic, Ollama, etc.) as your analysis engine.
+
+### Simple text analysis
+
+```r
 library(stancer)
 library(ellmer)
 
-chat <- ellmer::chat_openai()
+# Set up your LLM client
+chat <- chat_anthropic()
 
-tweet <- "The carbon tax is just another way for the government to control our lives and stifle economic growth. It's a job killer!"
+text <- "The carbon tax is just another way for the government to control our lives and stifle economic growth."
+target <- "Climate Change mitigation policies"
 
-target <- "Climate Change is Real Concern"
+result <- llm_stance(
+  text,
+  target,
+  type = "object", # stance towards a given object or entity 
+  # type = "statement", # whether a text agrees with a certain statement
+  chat_base = chat,
+  domain_role = "economic analyst"
+)
 
-llm_stance(
-    tweet,
-    target,
-    type = "statement",
-    chat_base = chat,
-    domain_role = "social commentator"
+# View the summary
+summary(result)
+as.data.frame(result)
+inspect(result, "analysis", "linguistic")
+```
+
+### Data frame integration (mall-style)
+
+Inspired by the [mall](https://mlverse.github.io/mall/) package, `stancer` provides a seamless way to process entire datasets. It handles the row-wise operations and returns a tidy data frame with the results.
+
+```r
+library(dplyr)
+
+comments <- tibble(
+  text = c(
+    "Renewables are the only way forward for a clean planet.",
+    "I'm worried about the reliability of the power grid if we switch too fast.",
+    "Energy prices are already too high, we don't need more regulations."
+  )
+)
+
+target <- "Transition to renewable energy"
+
+# Process the entire data frame
+results <- comments %>%
+  llm_stance(text, target, chat_base = chat)
+
+# The result is a tibble with a new .stance column
+glimpse(results)
+```
+
+```
+## Rows: 3
+## Columns: 2
+## $ text    <chr> "Renewables are the only way forward for a clean planet.", "I'm worried about the reliability of the power grid if we switch too fast.", "E…
+## $ .stance <fct> Positive, Neutral, Negative
+```
+
+### Customizing Prompts
+
+If you need to adapt the agents' behaviour, support a new language, or you find that the original prompts are too verbose and slow, you can provide your own instructions. By using the `prompts_dir` argument, you can point the package to a local folder containing custom `.md` files.
+
+`stancer` will look for specific files (e.g., `user-linguist.md`, `system-judger.md`, `description-likert.md`) in that directory. If a file is missing, the package will gracefully fall back to its internal defaults with respect to the `language` argument (`"en"` by default). This allows you to override the system partially or entirely.
+
+```r
+# Use custom instructions from a local folder
+result <- llm_stance(
+  text,
+  target,
+  type = "object",
+  chat_base = chat,
+  prompts_dir = "path/to/my_prompts/"
 )
 ```
+
 
 ## Requirements
 
 - R >= 4.1.0
-- {ellmer} for LLM integration
-- API access to supported language models (OpenAI, Anthropic, etc.)
+- [ellmer](https://ellmer.tidyverse.org/) for LLM integration.
+- API access to your chosen LLM provider.
 
 ## Citation & Attribution
 
-This implementation is based on the COLA framework from:
-
-> Lan, X., Gao, C., Jin, D., & Li, Y. (2024). Stance Detection with Collaborative Role-Infused LLM-Based Agents. [arXiv preprint](https://arxiv.org/abs/2310.10467)
+This implementation is based on the COLA framework from @lan2024stancedetectioncollaborativeroleinfused.
 
 When using this package, please cite the original COLA paper.
+
+## References
+
+::: {#refs}
+:::
