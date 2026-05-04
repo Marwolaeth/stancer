@@ -38,6 +38,7 @@ usethis::use_package('yaml')
 usethis::use_package('glue')
 usethis::use_package('cli')
 usethis::use_package('rlang')
+usethis::use_package('tibble')
 usethis::use_package('cld2', type = "Suggests")
 ```
 
@@ -4846,13 +4847,13 @@ llm_stance.character <- function(
 ) {
   ## Validation ----
   tictoc::tic('Analysis')
-  
+
   # Validate text and target
   validate_character(text)
   validate_character(target)
-  
+
   n <- length(text)
-  
+
   # Validate type
   if (rlang::is_character(type)) {
     if (length(type == 2) != n) {
@@ -4865,7 +4866,7 @@ llm_stance.character <- function(
       "{.arg type} must be a character vector, got {.cls {class(type)}}"
     )
   }
-  
+
   # Validate language
   if (is.null(language) || length(language) > 1) {
     if (rlang::is_installed("cld2")) {
@@ -4890,10 +4891,10 @@ llm_stance.character <- function(
             {.cls {class(language)}} of length {.val {length(language)}}"
     )
   }
-  
+
   # Validate scale
   scale <- rlang::arg_match(scale, c('categorical', 'numeric', 'likert'))
-  
+
   # Validate domain_role
   if (is.null(domain_role)) {
     domain_role <- switch(
@@ -4917,13 +4918,13 @@ llm_stance.character <- function(
       )
     }
   }
-  
+
   if (length(domain_role) > 1) {
     cli::cli_warn(
       "Multiple domain roles detected. Parallel execution is unsupported."
     )
   }
-  
+
   ### Chat Validation ----
   # Validate and arrange the `chat_base` argument across stages
   #
@@ -4952,7 +4953,7 @@ llm_stance.character <- function(
         )
       }
     }
-    
+
     # Arrange based on list length
     indices <- switch(
       length(chat_base),
@@ -4967,10 +4968,10 @@ llm_stance.character <- function(
       )
     )
     lapply(indices, \(i) chat_base[[i]]$clone(deep = TRUE))
-    
+
   } else if (ellmer:::is_chat(chat_base)) {
     rep(list(chat_base$clone(deep = TRUE)), times = 3)
-    
+
   } else {
     cli::cli_abort(
       c(
@@ -4980,16 +4981,16 @@ llm_stance.character <- function(
       )
     )
   }
-  
+
   ## Prompts ----
   prompt_templates <- templates_collect(prompts_dir, language, scale)
-  
+
   ## Preparation ----
   target <- recycle_arg(target, n)
   type <- recycle_arg(type, n)
-  
+
   target_types <- sapply(type, type_to_term, language = language)
-  
+
   inputs <- list(
     texts = text,
     targets = target,
@@ -5000,7 +5001,7 @@ llm_stance.character <- function(
     domain_roles = domain_role,
     prompt_templates = prompt_templates
   )
-  
+
   if (verbose) {
     cat("\n")
     cat(strrep("=", 70), "\n")
@@ -5014,7 +5015,7 @@ llm_stance.character <- function(
     )
     cat("\n")
   }
-  
+
   ## Analysis ----
   output <- inputs |>
     stage_1_parallel_analysis(chats[[1]], verbose, rpm) |>
@@ -5022,11 +5023,11 @@ llm_stance.character <- function(
     stage_2_parallel_debates(chats[[2]], verbose, rpm) |>
     validate_stage('Stage 2 (Stance debates)') |>
     stage_3_parallel_judgement(chats[[3]], verbose, rpm, ...)
-  
+
   if (is.null(output$judgement_results) || nrow(output$judgement_results) != n) {
     cli::cli_abort("Final stance judgement returned unexpected results")
   }
-  
+
   # Additional postprocessing of quantitative and Likert stance labels
   if (scale == 'numeric') {
     # output$judgement_results$stance <- truncate(
@@ -5047,7 +5048,7 @@ llm_stance.character <- function(
       ordered = TRUE
     )
   }
-  
+
   ## Postprocessing ----
   summary_df <- data.frame(
     text = text,
@@ -5057,7 +5058,7 @@ llm_stance.character <- function(
   ) |>
     cbind(output$judgement_results) |>
     tibble::as_tibble()
-  
+
   if (verbose) {
     cat("\U1F4CA Summary Table:\n")
     print(summary_df)
@@ -5068,7 +5069,7 @@ llm_stance.character <- function(
   } else {
     toc <- tictoc::toc(func.toc = stage_complete, quiet = TRUE)
   }
-  
+
   ## Return ----
   structure(
     list(

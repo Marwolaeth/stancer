@@ -15,6 +15,7 @@ Imports:
     ellmer,
     glue,
     rlang,
+    tibble,
     yaml
 Suggests: 
     cld2
