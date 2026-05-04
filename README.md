@@ -79,7 +79,7 @@ library(stancer)
 library(ellmer)
 
 # Set up your LLM client
-chat <- chat_anthropic()
+chat <- ellmer::chat_anthropic()
 
 text <- "The carbon tax is just another way for the government to control our lives and stifle economic growth."
 target <- "Climate Change mitigation policies"
@@ -106,21 +106,26 @@ Inspired by the [mall](https://mlverse.github.io/mall/) package,
 the row-wise operations and returns a tidy data frame with the results.
 
 ``` r
+library(stancer)
+library(ellmer)
 library(dplyr)
 
-comments <- tibble(
-  text = c(
-    "Renewables are the only way forward for a clean planet.",
-    "I'm worried about the reliability of the power grid if we switch too fast.",
-    "Energy prices are already too high, we don't need more regulations."
-  )
-)
+data("programming_tweets")
 
-target <- "Transition to renewable energy"
+chat <- ellmer::chat_anthropic()
 
-# Process the entire data frame
-results <- comments %>%
-  llm_stance(text, target, chat_base = chat)
+# Process the first three rows of the data frame
+results <- programming_tweets |>
+    dplyr::slice_head(n = 3) |>
+    llm_stance(
+        tweet,
+        target = "Julia programming language",
+        type = "object",
+        chat = chat,
+        domain_role = "computer scientis",
+        language = "en",
+        scale = "categorical"
+    )
 
 # The result is a tibble with a new .stance column
 glimpse(results)
@@ -128,8 +133,8 @@ glimpse(results)
 
     ## Rows: 3
     ## Columns: 2
-    ## $ text    <chr> "Renewables are the only way forward for a clean planet.", "I'm worried about the reliability of the power grid if we switch too fast.", "E…
-    ## $ .stance <fct> Positive, Neutral, Negative
+    ## $ tweet   <chr> "Julia's SciML ecosystem is absolutely phenomenal for solving complex differential equations. The performance and expressiveness combined i…
+    ## $ .stance <fct> Positive, Positive, Positive
 
 ### Customizing Prompts
 

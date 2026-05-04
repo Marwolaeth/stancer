@@ -11,6 +11,8 @@ Description: Tools for stance analysis using an ensemble of large language
     to use. Each result includes the full reasoning and intermediate steps
     from the agents.
 License: CC BY 4.0
+Depends: 
+    R (>= 3.5)
 Imports: 
     cld2,
     cli,
@@ -32,6 +34,7 @@ VignetteBuilder:
     knitr
 Config/fusen/version: 0.7.2
 Encoding: UTF-8
+LazyData: true
 package: stancer
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
