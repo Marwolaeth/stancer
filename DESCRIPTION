@@ -1,7 +1,7 @@
 Package: stancer
 Version: 0.0.0.9000
-Title: LLM-Based Sentiment and Stance Analysis with COLA Framework
-Description: An R package for sentiment and stance detection using the COLA (Collaborative rOle-infused LLM-based Agents) framework. Provides functions for single and batch text analysis with support for multiple language models via the ellmer package.
+Title: Stance Analysis using Ensemble of LLM Agents Through `ellmer`
+Description: Tools for stance analysis using an ensemble of large language models. The package follows a multi-stage process in which different agents perform linguistic analysis, role-play as domain experts, and engage in structured debates to reach a final judgment. It works with 'ellmer' chat objects, so a user can choose which models and providers to use. Each result includes the full reasoning and intermediate steps from the agents.
 Authors@R: person(given = "Andrej",
        family = "Pawluczenko",
        role = c("aut", "cre"),
@@ -11,9 +11,10 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports: 
-    cld2,
     cli,
     ellmer,
     glue,
     rlang,
     yaml
+Suggests: 
+    cld2
