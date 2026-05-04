@@ -1,6 +1,7 @@
 ---
-title: 'rcola: Collaborative Role-infused LLM-based Agents for Stance Detection'
+title: 'stancer: Stance Analysis using Ensemble of LLM Agents through `ellmer`'
 output: html_document
+bibliography: references.bib
 editor_options:
 chunk_output_type: console
 ---
@@ -19,8 +20,8 @@ library(yaml)
 fusen::fill_description(
   pkg = here::here(),
   fields = list(
-    Title = "LLM-based Sentiment and Stance Analysis with COLA Framework",
-    Description = "An R package for sentiment and stance detection using the COLA (Collaborative rOle-infused LLM-based Agents) framework. Provides functions for single and batch text analysis with support for multiple language models via the ellmer package.",
+    Title = "Stance Analysis using Ensemble of LLM Agents through `ellmer`",
+    Description = "Tools for stance analysis using an ensemble of large language models. The package follows a multi-stage process in which different agents perform linguistic analysis, role-play as domain experts, and engage in structured debates to reach a final judgment. It works with 'ellmer' chat objects, so a user can choose which models and providers to use. Each result includes the full reasoning and intermediate steps from the agents.",
     `Authors@R` = c(
       person("Andrej", "Pawluczenko", email = "a.pawluczenko@gmail.com", role = c("aut", "cre"))
     )
@@ -31,11 +32,20 @@ fusen::fill_description(
 usethis::use_ccby_license()
 ```
 
+```{r development-function}
+usethis::use_package('ellmer')
+usethis::use_package('yaml')
+usethis::use_package('glue')
+usethis::use_package('cli')
+usethis::use_package('rlang')
+usethis::use_package('cld2')
+```
+
 # Introduction
 
 ## Overview
 
-**rcola** is an R implementation of the COLA (**C**ollaborative r**O**Le-infused **L**LM-based **A**gents) framework for automated stance detection in texts.
+**stancer** is an R implementation of the COLA (**C**ollaborative r**O**Le-infused **L**LM-based **A**gents) framework for automated stance detection in texts.
 
 The package employs a three-stage collaborative approach:
 
@@ -1295,7 +1305,7 @@ test_that('stage_complete rounds time to 3 decimals', {
 #' @keywords internal
 
 load_translations <- function() {
-  yaml_file <- system.file("i18n/translations.yaml", package = "rcola")
+  yaml_file <- system.file("i18n/translations.yaml", package = "stancer")
   if (!file.exists(yaml_file)) yaml_file <- here::here("inst/i18n/translations.yaml")
   rlang::try_fetch(
     yaml::read_yaml(yaml_file),
@@ -1318,30 +1328,30 @@ test_that('load_translations works', {
 
 ## Available Languages
 
-```{r function-rcola_available_languages}
-#' Get available languages for rcola
+```{r function-stancer_available_languages}
+#' Get available languages for stancer
 #'
 #' @return Character vector of supported language codes
 #' @export
 
-rcola_available_languages <- function() {
+stancer_available_languages <- function() {
   names(load_translations())
 }
 ```
 
-```{r examples-rcola_available_languages}
-rcola_available_languages()
+```{r examples-stancer_available_languages}
+stancer_available_languages()
 ```
 
-```{r tests-rcola_available_languages}
-test_that('rcola_available_languages is a function', {
-  expect_true(inherits(rcola_available_languages, 'function'))
+```{r tests-stancer_available_languages}
+test_that('stancer_available_languages is a function', {
+  expect_true(inherits(stancer_available_languages, 'function'))
 })
 
 test_that('load_translations works', {
-  expect_no_error(rcola_available_languages())
-  expect_is(rcola_available_languages(), 'character')
-  expect_equal(rcola_available_languages(), c('en', 'uk', 'ru'))
+  expect_no_error(stancer_available_languages())
+  expect_is(stancer_available_languages(), 'character')
+  expect_equal(stancer_available_languages(), c('en', 'uk', 'ru'))
 })
 ```
 
@@ -1359,10 +1369,10 @@ test_that('load_translations works', {
 
 l <- function(language, caption_id, case = NULL) {
   # Check lanuage
-  if (!language %in% rcola_available_languages()) {
+  if (!language %in% stancer_available_languages()) {
     abort(
       "Language '{language}' not available. \\
-            Use: {.val {rcola_available_languages()}}"
+            Use: {.val {stancer_available_languages()}}"
     )
   }
 
@@ -1516,7 +1526,7 @@ test_that('l() works with likert case type', {
 
 ## Check Translations
 
-```{r function-rcola_check_translations}
+```{r function-stancer_check_translations}
 #' Check translation dictionary structure
 #'
 #' @description
@@ -1538,7 +1548,7 @@ test_that('l() works with likert case type', {
 #'
 #' @examples
 #' \dontrun{
-#'   rcola_check_translations()
+#'   stancer_check_translations()
 #'   # Available languages: en, uk, ru
 #'   #
 #'   # Language: en
@@ -1557,7 +1567,7 @@ test_that('l() works with likert case type', {
 #' @keywords internal
 #' @export
 
-rcola_check_translations <- function() {
+stancer_check_translations <- function() {
   dict <- load_translations()
 
   cat("Available languages:", paste(names(dict), collapse = ", "), "\n\n")
@@ -1578,65 +1588,65 @@ rcola_check_translations <- function() {
 }
 ```
 
-```{r examples-rcola_check_translations}
-rcola_check_translations()
+```{r examples-stancer_check_translations}
+stancer_check_translations()
 ```
 
-```{r tests-rcola_check_translations}
-test_that('rcola_check_translations returns invisibly TRUE', {
-  result <- rcola_check_translations()
+```{r tests-stancer_check_translations}
+test_that('stancer_check_translations returns invisibly TRUE', {
+  result <- stancer_check_translations()
   expect_true(result)
-  expect_invisible(rcola_check_translations())
+  expect_invisible(stancer_check_translations())
 })
 
-test_that('rcola_check_translations prints available languages', {
+test_that('stancer_check_translations prints available languages', {
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "Available languages:"
   )
 })
 
-test_that('rcola_check_translations lists all languages', {
+test_that('stancer_check_translations lists all languages', {
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "en"
   )
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "uk"
   )
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "ru"
   )
 })
 
-test_that('rcola_check_translations shows key count per language', {
+test_that('stancer_check_translations shows key count per language', {
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "Language: en"
   )
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "Keys: \\d+"
   )
 })
 
-test_that('rcola_check_translations identifies keys with cases', {
+test_that('stancer_check_translations identifies keys with cases', {
   expect_output(
-    rcola_check_translations(),
+    stancer_check_translations(),
     "Keys with cases:"
   )
 })
 
-test_that('rcola_check_translations output is consistent', {
-  output1 <- capture.output(rcola_check_translations())
-  output2 <- capture.output(rcola_check_translations())
+test_that('stancer_check_translations output is consistent', {
+  output1 <- capture.output(stancer_check_translations())
+  output2 <- capture.output(stancer_check_translations())
   expect_equal(output1, output2)
 })
 
-test_that('rcola_check_translations handles all languages equally', {
-  output <- capture.output(rcola_check_translations())
+test_that('stancer_check_translations handles all languages equally', {
+  output <- capture.output(stancer_check_translations())
 
   # Проверяем, что каждый язык имеет свою секцию
   en_count <- sum(grepl("Language: en", output))
@@ -1662,10 +1672,10 @@ test_that('rcola_check_translations handles all languages equally', {
 
 type_to_term <- function(
     type = c('object', 'statement'),
-    language = rcola_available_languages()
+    language = stancer_available_languages()
 ) {
   type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
-  language <- rlang::arg_match(language, rcola_available_languages(), multiple = FALSE)
+  language <- rlang::arg_match(language, stancer_available_languages(), multiple = FALSE)
 
   switch(
     type,
@@ -1736,7 +1746,7 @@ test_that('type_to_term returns character string', {
 
 # Test 9: type_to_term works with all available languages
 test_that('type_to_term works with all available languages', {
-  available_langs <- rcola_available_languages()
+  available_langs <- stancer_available_languages()
 
   for (lang in available_langs) {
     result_obj <- type_to_term(type = "object", language = lang)
@@ -1853,7 +1863,7 @@ type_stance_likert <- function(description_file) {
 
 ```{r tests-type_stance}
 # Set-up common paths for tests
-prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+prompts_dir <- system.file('prompts', 'en', package = 'stancer')
 if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
 
 test_that('type_stance_categorical returns enum type', {
@@ -1986,7 +1996,7 @@ test_that('type_stance_likert handles missing file', {
 #' provided language code using the `'explanation_description'` translation key.
 #'
 #' @param language Language code for localisation (e.g., "en", "uk", "ru").
-#'   Must be one of the available languages in the rcola translation dictionary.
+#'   Must be one of the available languages in the stancer translation dictionary.
 #'
 #' @param description_file Path to a file containing the stance scale description.
 #'   The file may include template variables that will be interpolated
@@ -2060,7 +2070,7 @@ type_stance_analysis <- function(language, description_file, scale = "categorica
 
 ```{r tests-type_stance_analysis}
 # Set-up common paths for tests
-prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+prompts_dir <- system.file('prompts', 'en', package = 'stancer')
 if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
 
 test_that('type_stance_analysis returns object type', {
@@ -2199,7 +2209,7 @@ test_that('type_stance_analysis works with all available languages', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))
 
-  available_langs <- rcola_available_languages()
+  available_langs <- stancer_available_languages()
 
   for (lang in available_langs) {
     result <- type_stance_analysis(
@@ -2276,7 +2286,7 @@ templates_collect <- function(prompts_dir, language, scale) {
   # 1. Determine default package directories
   DEFAULT_PROMPTS_DIR <- system.file(
     file.path('prompts', language),
-    package = 'rcola'
+    package = 'stancer'
   )
   # Fallback for development environment
   if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
@@ -2454,7 +2464,7 @@ test_that("templates_collect prioritises user directory over system directory", 
 #'
 #' @param language Language code for localisation (e.g., "en", "uk", "ru").
 #'   Defaults to the first available language. Must be one of the available
-#'   languages in the rcola translation dictionary.
+#'   languages in the stancer translation dictionary.
 #'
 #' @param add_reference_resolution Logical. For the `judger` role only.
 #'   If `TRUE`, includes instructions for resolving references in statements.
@@ -2538,7 +2548,7 @@ test_that("templates_collect prioritises user directory over system directory", 
 prompts_prepare <- function(
     role,
     templates,
-    language = rcola_available_languages(),
+    language = stancer_available_languages(),
     add_reference_resolution = FALSE,
     add_statement_resolution = FALSE,
     ...
@@ -2550,7 +2560,7 @@ prompts_prepare <- function(
   )
   language <- rlang::arg_match(
     language,
-    rcola_available_languages(),
+    stancer_available_languages(),
     multiple = FALSE
   )
 
@@ -2621,7 +2631,7 @@ prompts_prepare <- function(
 
 ```{r tests-prompts_prepare}
 # Set-up common paths for tests
-prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+prompts_dir <- system.file('prompts', 'en', package = 'stancer')
 if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
 
 test_that('prompts_prepare returns list with system and task', {
@@ -3401,7 +3411,7 @@ MockChat <- R6::R6Class(
 )
 
 # Set-up common paths for tests
-prompts_dir <- system.file('prompts', 'en', package = 'rcola')
+prompts_dir <- system.file('prompts', 'en', package = 'stancer')
 if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
 
 test_that("prepare_expert_chats successfully prepares linguist chats", {
@@ -4827,7 +4837,7 @@ llm_stance.character <- function(
     target,
     chat_base,
     type = c('object', 'statement'),
-    language = rcola_available_languages(),
+    language = stancer_available_languages(),
     scale = c('categorical', 'numeric', 'likert'),
     domain_role = NULL,
     prompts_dir = NULL,
@@ -4861,11 +4871,11 @@ llm_stance.character <- function(
     )
   }
   if (rlang::is_scalar_character(language)) {
-    if (!language %in% rcola_available_languages()) {
+    if (!language %in% stancer_available_languages()) {
       cli::cli_abort(
         c(
           "Language {.val {language}} not available",
-          "i" = "Use one of: {.val {rcola_available_languages()}}"
+          "i" = "Use one of: {.val {stancer_available_languages()}}"
         )
       )
     }
@@ -5192,7 +5202,7 @@ test_that("llm_stance.character handles chat list and cloning", {
 })
 
 test_that("llm_stance.character aborts on invalid language", {
-  mockery::stub(llm_stance.character, "rcola_available_languages", c("en", "ru"))
+  mockery::stub(llm_stance.character, "stancer_available_languages", c("en", "ru"))
 
   expect_error(
     llm_stance("text", "target", chat_base = list(), language = "fr"),
@@ -6272,7 +6282,7 @@ test_that("inspect.stance_result: error handling (out of bounds and missing sect
 
 ```{r development-inflate, eval=FALSE}
 fusen::inflate(
-  flat_file = 'dev/flat_rcola.Rmd',
+  flat_file = 'dev/flat_stancer.Rmd',
   codecov = TRUE,
   clean = TRUE
 )

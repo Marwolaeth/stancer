@@ -5,16 +5,16 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/Marwolaeth/rcola/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Marwolaeth/rcola/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
-coverage](https://codecov.io/gh/Marwolaeth/rcola/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/rcola)
+coverage](https://codecov.io/gh/Marwolaeth/stancer/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/stancer)
 <!-- badges: end -->
 
 R package for sentiment and stance analysis using the COLA framework
 
 ## Overview
 
-**rcola** is an R implementation of the COLA (**C**ollaborative
+**stancer** is an R implementation of the COLA (**C**ollaborative
 r**O**le-infused **L**LM-based **A**gents – see Lan et al. (2024))
 framework for automated stance detection in texts. The package employs a
 three-stage collaborative approach where specialised LLM-based agents
@@ -24,12 +24,12 @@ neutral towards a given target.
 
 ## Installation
 
-You can install the development version of rcola from
+You can install the development version of stancer from
 [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("pak")
-pak::pak("Marwolaeth/rcola")
+pak::pak("Marwolaeth/stancer")
 ```
 
 ## Example
@@ -37,7 +37,7 @@ pak::pak("Marwolaeth/rcola")
 This is a basic example which shows you how to solve a common problem:
 
 ``` r
-library(rcola)
+library(stancer)
 library(ellmer)
 
 chat <- ellmer::chat_openai()

@@ -1,3 +1,3 @@
-# rcola (development version)
+# stancer (development version)
 
 * Initial CRAN submission.
