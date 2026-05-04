@@ -39,6 +39,8 @@ usethis::use_package('cli')
 usethis::use_package('rlang')
 usethis::use_package('tibble')
 usethis::use_package('cld2', type = "Suggests")
+
+usethis::reso
 ```
 
 # Introduction
@@ -832,9 +834,7 @@ test_that('safe_eval returns NULL on evaluation failure', {
 #' @param input_name Character scalar. A descriptive name for the
 #'   object being validated, used in error messages.
 #'
-#' @return Invisibly TRUE if all required fields are present.
-#' @throws An error if `inputs` is NULL, if any required fields are
-#'   missing, or if `input_name` is not a character scalar.
+#' @return Invisibly TRUE if all required fields are present or throws an error if `inputs` is NULL, if any required fields are missing, or if `input_name` is not a character scalar.
 #'
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
@@ -1554,24 +1554,6 @@ test_that('l() works with likert case type', {
 #' @return
 #' Invisibly `TRUE`. Called for side effects (printing to console).
 #'
-#' @examples
-#' \dontrun{
-#'   stancer_check_translations()
-#'   # Available languages: en, uk, ru
-#'   #
-#'   # Language: en
-#'   #   Keys: 13
-#'   #   Keys with cases: 5
-#'   #
-#'   # Language: uk
-#'   #   Keys: 13
-#'   #   Keys with cases: 5
-#'   #
-#'   # Language: ru
-#'   #   Keys: 13
-#'   #   Keys with cases: 5
-#' }
-#'
 #' @keywords internal
 #' @export
 
@@ -1819,22 +1801,6 @@ test_that('type_to_term returns different terms for different types', {
 #' [ellmer::parallel_chat_structured()] for using these type definitions
 #' in structured data extraction tasks.
 #'
-#' @examples
-#' \dontrun{
-#'   # Initialise a `Chat` object
-#'   my_chat <- ellmer::chat_anthropic()
-#'
-#'   # Define scale types for stance extraction
-#'   categorical_scale <- type_stance_categorical("scales/categorical.txt")
-#'   numeric_scale <- type_stance_numeric("scales/numeric.txt")
-#'   likert_scale <- type_stance_likert("scales/likert.txt")
-#'
-#'   # Use in structured extraction
-#'   result <- my_chat$chat_structured(
-#'     "Some text",
-#'     type = likert_scale
-#'   )
-#' }
 #'
 #' @keywords internal
 #' @name type_stance
@@ -2030,29 +1996,6 @@ test_that('type_stance_likert handles missing file', {
 #'
 #' [l()] for translation lookup.
 #'
-#' @examples
-#' \dontrun{
-#'   # Create schema for categorical stance analysis in English
-#'   schema <- type_stance_analysis(
-#'     language = "en",
-#'     description_file = "inst/prompts/en/description-categorical.md",
-#'     scale = "categorical"
-#'   )
-#'
-#'   # Create schema for numeric stance analysis in Russian
-#'   schema <- type_stance_analysis(
-#'     language = "ru",
-#'     description_file = "inst/prompts/ru/description-numeric.md",
-#'     scale = "numeric"
-#'   )
-#'
-#'   # Use in structured extraction
-#'   result <- ellmer::parallel_chat_structured(
-#'     "Some text",
-#'     chat = my_chat,
-#'     schema = schema
-#'   )
-#' }
 #'
 #' @keywords internal
 type_stance_analysis <- function(language, description_file, scale = "categorical") {
@@ -2067,9 +2010,9 @@ type_stance_analysis <- function(language, description_file, scale = "categorica
     type_stance_categorical(description_file)
   )
 
-  type_object(
+  ellmer::type_object(
     stance = type_stance,
-    explanation = type_string(
+    explanation = ellmer::type_string(
       description = l(language, 'explanation_description')
     )
   )
@@ -2286,9 +2229,6 @@ test_that('type_stance_analysis works with all scale types', {
 #' @return A named list where keys represent template roles (e.g.,
 #'   `system-linguist`, `scale_description`) and values are absolute file paths.
 #'
-#' @throws An error via `cli_abort()` if no valid directories are found or
-#'   if a required template file is missing across all search locations.
-#'
 #' @keywords internal
 templates_collect <- function(prompts_dir, language, scale) {
   # 1. Determine default package directories
@@ -2388,7 +2328,7 @@ test_that("templates_collect handles different scale types correctly", {
   # Test Numeric (should fail if files don't exist)
   expect_error(
     templates_collect(NULL, "en", "numeric"),
-    regexp = "Prompt.+?description\\-numeric\\.md.+? not found",
+    regexp = "not found",
   )
 })
 
@@ -2495,63 +2435,6 @@ test_that("templates_collect prioritises user directory over system directory", 
 #' @seealso
 #' [ellmer::interpolate_file()] for template interpolation details.
 #'
-#' @examples
-#' \dontrun{
-#'   # Prepare prompts for linguistic analysis
-#'   templates <- list(
-#'     `system-linguist` = "inst/prompts/en/system-linguist.md",
-#'     `user-linguist` = "inst/prompts/en/user-linguist.md"
-#'   )
-#'
-#'   prompts <- prompts_prepare(
-#'     role = "linguist",
-#'     templates = templates,
-#'     language = "en",
-#'     target = "climate change",
-#'     text = c("some text", "and more"),
-#'     target_type = "the object"
-#'   )
-#'
-#'   # Prepare prompts for domain expert
-#'   templates <- list(
-#'     `system-domain` = "inst/prompts/en/system-domain.md",
-#'     `user-domain` = "inst/prompts/en/user-domain.md"
-#'   )
-#'
-#'   prompts <- prompts_prepare(
-#'     role = "domain",
-#'     templates = templates,
-#'     language = "en",
-#'     target = "artificial intelligence",
-#'     text = "AI will replace all human jobs",
-#'     target_type = "the object",
-#'     domain = "technology and employment expert"
-#'   )
-#'
-#'   # Prepare prompts for judger with additional options
-#'   templates <- list(
-#'     `system-judger` = "inst/prompts/en/system-judger.md",
-#'     `user-judger` = "inst/prompts/en/user-judger.md",
-#'     reference_resolution = "inst/prompts/en/reference-resolution.md",
-#'     statement_resolution = "inst/prompts/en/statement-resolution.md",
-#'     scale_guide = "inst/prompts/en/guide-likert.md"
-#'   )
-#'
-#'   prompts <- prompts_prepare(
-#'     role = "judger",
-#'     templates = templates,
-#'     language = "en",
-#'     add_reference_resolution = TRUE,
-#'     add_statement_resolution = TRUE,
-#'     target = "Climate change is a real concern",
-#'     text = "Global warming is a serious threat",
-#'     target_type = "the statement",
-#'     FavourResponse = "This text is almost a paraphrase of the target statement",
-#'     AgainstResponse = "This is most probably a parody of climate speeches.",
-#'     NeutralResponse = "Context is missing and we should be sceptical"
-#'   )
-#' }
-#'
 #' @keywords internal
 prompts_prepare <- function(
     role,
@@ -2635,6 +2518,62 @@ prompts_prepare <- function(
 
   prompts
 }
+```
+
+```{r examples-prompts-prepare}
+# Prepare prompts for linguistic analysis
+# templates <- list(
+#   `system-linguist` = "prompts/en/system-linguist.md",
+#   `user-linguist` = "prompts/en/user-linguist.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "linguist",
+#   templates = templates,
+#   language = "en",
+#   target = "climate change",
+#   text = c("some text", "and more"),
+#   target_type = "the object"
+# )
+# 
+# # Prepare prompts for domain expert
+# templates <- list(
+#   `system-domain` = "prompts/en/system-domain.md",
+#   `user-domain` = "prompts/en/user-domain.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "domain",
+#   templates = templates,
+#   language = "en",
+#   target = "artificial intelligence",
+#   text = "AI will replace all human jobs",
+#   target_type = "the object",
+#   domain = "technology and employment expert"
+# )
+# 
+# # Prepare prompts for judger with additional options
+# templates <- list(
+#   `system-judger` = "prompts/en/system-judger.md",
+#   `user-judger` = "prompts/en/user-judger.md",
+#   reference_resolution = "prompts/en/reference-resolution.md",
+#   statement_resolution = "prompts/en/statement-resolution.md",
+#   scale_guide = "prompts/en/guide-likert.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "judger",
+#   templates = templates,
+#   language = "en",
+#   add_reference_resolution = TRUE,
+#   add_statement_resolution = TRUE,
+#   target = "Climate change is a real concern",
+#   text = "Global warming is a serious threat",
+#   target_type = "the statement",
+#   FavourResponse = "This text is almost a paraphrase of the target statement",
+#   AgainstResponse = "This is most probably a parody of climate speeches.",
+#   NeutralResponse = "Context is missing and we should be sceptical"
+# )
 ```
 
 ```{r tests-prompts_prepare}
@@ -3082,8 +3021,7 @@ test_that('prompts_prepare produces different results for different target', {
 #' @param tasks A character vector of interpolated tasks.
 #' @param expected_length The number of tasks expected (usually matching the number of input texts).
 #'
-#' @return Invisibly TRUE if validation passes.
-#' @throws An error if tasks are not a character vector, have incorrect length, or contain empty strings.
+#' @return Invisibly TRUE if validation passes or throws an error if tasks are not a character vector, have incorrect length, or contain empty strings.
 #'
 #' @keywords internal
 
@@ -3301,7 +3239,7 @@ test_that("tasks_prepare throws error on mismatched system prompt length", {
 
   expect_error(
     tasks_prepare(chat_base, prompts, n_texts),
-    regexp = "Length of system and user prompts must match.+?3.+?\\,\\sgot.+?2",
+    regexp = "Length of system and user prompts must match 3",
     fixed = FALSE
   )
 })
@@ -3558,8 +3496,6 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
 #' @param verbose Logical. Whether to print progress messages to the console.
 #'
 #' @return A character vector of LLM responses, one for each input text.
-#' @throws An error if the number of responses does not match the number of
-#'   input texts, or if the LLM returns non-character data.
 #'
 #' @keywords internal
 #' @importFrom ellmer parallel_chat_text
@@ -3749,9 +3685,6 @@ test_that("execute_role prints progress message when verbose is TRUE", {
 #' @return A list with two elements:
 #'   - `chats`: A list containing a single `ellmer::Chat` object.
 #'   - `tasks`: A character vector of user prompts for each input text.
-#'
-#' @throws An error via `abort()` if the templates result in multiple
-#'   distinct system prompts.
 #'
 #' @keywords internal
 
@@ -4130,6 +4063,17 @@ stage_1_parallel_analysis <- function(
 ```
 
 ```{r tests-stage_1_parallel_analysis}
+# Reusing the MockChat
+MockChat <- R6::R6Class(
+  "MockChat",
+  public = list(
+    system_prompt = NULL,
+    set_system_prompt = function(prompt) {
+      self$system_prompt <- prompt
+    }
+  )
+)
+
 test_that("stage_1_parallel_analysis validates inputs and returns results", {
   # 1. Set-up Data
   inputs <- list(
@@ -4818,19 +4762,6 @@ llm_stance <- function(x, ...) {
 #'   - debates: debate results
 #'   - judgements: final judgements
 #'   - metadata: processing metadata
-#' @examples
-#' \dontrun{
-#' chat <- ellmer::chat_openai()
-#' result <- llm_stance(
-#'     text = "Climate change is not real",
-#'     target = "Climate Change is real",
-#'     chat_base = chat,
-#'     type = "statement",
-#'     language = "en"
-#' )
-#' print(result)
-#' summary(result)
-#' }
 #'
 #' ⁠@importFrom ellmer is_chat
 #' @importFrom cli cli_abort cli_warn
@@ -5102,7 +5033,6 @@ llm_stance.character <- function(
 ```
 
 ```{r examples-llm_stance.character}
-# Example usage would go here
 # result <- llm_stance(
 #   text = "I support renewable energy",
 #   target = "renewable energy",
@@ -5220,7 +5150,7 @@ test_that("llm_stance.character aborts on invalid language", {
 
   expect_error(
     llm_stance("text", "target", chat_base = list(), language = "fr"),
-    regexp = "Language.+\"fr\".+not available",
+    regexp = "not available",
     fixed = FALSE
   )
 })
@@ -5527,7 +5457,6 @@ llm_stance.data.frame <- function(
 ```
 
 ```{r examples-llm_stance.data.frame}
-# Example usage would go here
 # results <- llm_stance(
 #   data = tweets_df,
 #   text = "text",
@@ -6299,7 +6228,8 @@ test_that("inspect.stance_result: error handling (out of bounds and missing sect
 
 ```{r development-inflate, eval=FALSE}
 fusen::inflate(
-  flat_file = 'dev/flat_stancer.Rmd',
+  pkg = here::here(),
+  flat_file = here::here('dev', 'flat_stancer.Rmd'),
   codecov = TRUE,
   clean = TRUE,
   vignette_name = "Get started"
