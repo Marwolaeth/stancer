@@ -100,7 +100,7 @@ inspect(result, "analysis", "linguistic")
 #' @examples
 #' truncate(c(-1, 0, 5, 10), a = 0, b = 5)
 #' # Returns: 0, 0, 5, 5
-#' @name utils
+#' @filename utils
 
 truncate <- function(x, a, b) {
   if (!is.numeric(x)) {
@@ -254,7 +254,7 @@ test_that('truncate rejects NULL values', {
 #' @return Throws error
 #' @keywords internal
 #' @importFrom cli cli_abort
-#' @name utils
+#' @filename utils
 
 abort <- function(msg) {
   cli::cli_abort(
@@ -598,7 +598,7 @@ test_that('abort with unicode characters', {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character try_fetch
 #' @importFrom cli cli_abort
-#' @name utils
+#' @filename utils
 
 catch <- function(
     expr,
@@ -793,7 +793,7 @@ test_that('catch_eval rejects wrong arguments', {
 #' @return Result of evaluation or `NULL`
 #' @keywords internal
 #' @importFrom rlang try_fetch
-#' @name utils
+#' @filename utils
 
 safe_eval <- function(
     quo,
@@ -843,7 +843,7 @@ test_that('safe_eval returns NULL on evaluation failure', {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
-#' @name validate
+#' @filename validate
 
 validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
   if (!rlang::is_scalar_character(input_name)) {
@@ -931,7 +931,7 @@ test_that("validate_fields works with named vectors", {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
-#' @name validate
+#' @filename validate
 
 validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
   if (!rlang::is_scalar_character(input_name)) {
@@ -1022,7 +1022,7 @@ test_that('validate_inputs rejects empty vector when expecting non-zero length',
 #' @return Invisibly TRUE or throws error
 #' @keywords internal
 #' @importFrom rlang is_character
-#' @name validate
+#' @filename validate
 
 validate_character <- function(x) {
   arg_name <- deparse(substitute(x))
@@ -1168,7 +1168,7 @@ test_that('validate_character error includes removal suggestion', {
 #'
 #' @return Unmodified `x` or throws an error
 #' @keywords internal
-#' @name validate
+#' @filename validate
 
 validate_stage <- function(x, stage_name) {
   if (is.null(x)) {
@@ -1206,7 +1206,7 @@ test_that('validate_stage rejects NULL input', {
 #'
 #' @return Recycled argument values
 #' @keywords internal
-#' @name utils
+#' @filename utils
 
 recycle_arg <- function(arg, n) {
   arg_name <- deparse(substitute(arg))
@@ -1270,7 +1270,7 @@ test_that('recycle_arg includes arg name in error', {
 #' @return Formatted timing message
 #' @keywords internal
 #' @importFrom glue glue
-#' @name verbose
+#' @filename verbose
 
 stage_complete <- function(tic, toc, msg) {
   tocmsg <- paste0(round(toc - tic, 3), " seconds elapsed")
@@ -1321,7 +1321,7 @@ test_that('stage_complete rounds time to 3 decimals', {
 #'
 #' @return List containing translations for all supported languages
 #' @keywords internal
-#' @name localisation
+#' @filename localisation
 
 load_translations <- function() {
   yaml_file <- system.file("i18n/translations.yaml", package = "stancer")
@@ -1350,7 +1350,7 @@ test_that('load_translations works', {
 #' Get available languages for stancer
 #'
 #' @return Character vector of supported language codes
-#' @name localisation
+#' @filename localisation
 #' @export
 
 stancer_available_languages <- function() {
@@ -1385,7 +1385,7 @@ test_that('stancer_available_languages works', {
 #'
 #' @return Character string with translation
 #' @keywords internal
-#' @name localisation
+#' @filename localisation
 
 l <- function(language, caption_id, case = NULL) {
   # Check lanuage
@@ -1576,7 +1576,7 @@ test_that('l() works with likert case type', {
 #' Invisibly `TRUE`. Called for side effects (printing to console).
 #'
 #' @keywords internal
-#' @name localisation
+#' @filename localisation
 #' @export
 
 stancer_check_translations <- function() {
@@ -1681,7 +1681,7 @@ test_that('stancer_check_translations handles all languages equally', {
 #'
 #' @return Character string with localised term
 #' @keywords internal
-#' @name localisation
+#' @filename localisation
 
 type_to_term <- function(
     type = c('object', 'statement'),
@@ -1826,7 +1826,7 @@ test_that('type_to_term returns different terms for different types', {
 #'
 #'
 #' @keywords internal
-#' @name type_stance
+#' @filename scales
 
 #' @rdname type_stance
 type_stance_categorical <- function(description_file) {
@@ -2021,7 +2021,7 @@ test_that('type_stance_likert handles missing file', {
 #'
 #'
 #' @keywords internal
-#' @name type_stance
+#' @filename scales
 type_stance_analysis <- function(language, description_file, scale = "categorical") {
   # Validate scale parameter
   scale <- rlang::arg_match(scale, c("numeric", "likert", "categorical"))
@@ -2254,7 +2254,7 @@ test_that('type_stance_analysis works with all scale types', {
 #'   `system-linguist`, `scale_description`) and values are absolute file paths.
 #'
 #' @keywords internal
-#' @name prompting
+#' @filename prompting
 templates_collect <- function(prompts_dir, language, scale) {
   # 1. Determine default package directories
   DEFAULT_PROMPTS_DIR <- system.file(
@@ -2475,7 +2475,7 @@ test_that("templates_collect throws error if no folders found", {
 #' [ellmer::interpolate_file()] for template interpolation details.
 #'
 #' @keywords internal
-#' @name prompting
+#' @filename prompting
 prompts_prepare <- function(
     role,
     templates,
@@ -3120,7 +3120,7 @@ test_that('prompts_prepare fails with empty strings', {
 #' @return Invisibly TRUE if validation passes or throws an error if tasks are not a character vector, have incorrect length, or contain empty strings.
 #'
 #' @keywords internal
-#' @name prompting
+#' @filename prompting
 
 tasks_validate <- function(tasks, expected_length) {
   rlang::try_fetch(
@@ -3249,7 +3249,7 @@ test_that("tasks_validate rejects fractional `expected_length`", {
 #' - `tasks`: A character vector of user prompts (tasks).
 #'
 #' @keywords internal
-#' @name prompting
+#' @filename prompting
 
 tasks_prepare <- function(chat_base, prompts, n_texts) {
   # General case when there may be > 1 system prompts
@@ -3412,7 +3412,7 @@ test_that("tasks_prepare clones the base chat deeply", {
 #'
 #' @keywords internal
 #' @importFrom rlang arg_match
-#' @name agents
+#' @filename agents
 
 prepare_expert_chats <- function(
     inputs,
@@ -3598,7 +3598,7 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
 #'
 #' @keywords internal
 #' @importFrom ellmer parallel_chat_text
-#' @name agents
+#' @filename agents
 
 execute_role <- function(
     expert_role,
@@ -3826,7 +3826,7 @@ test_that("execute_role throws error on unexpected chat response", {
 #'   - `tasks`: A character vector of user prompts for each input text.
 #'
 #' @keywords internal
-#' @name agents
+#' @filename agents
 
 prepare_debater_chats <- function(
     stance,
@@ -3971,7 +3971,7 @@ test_that("prepare_debater_chats fails with multiple system prompts", {
 #'
 #' @return List of chat configurations
 #' @keywords internal
-#' @name agents
+#' @filename agents
 
 prepare_judger_chats <- function(
     inputs,
@@ -4144,7 +4144,7 @@ test_that("prepare_judger_chats correctly handles statement resolution flag", {
 #' @keywords internal
 #' @importFrom tictoc tic toc
 #' @importFrom glue glue
-#' @name stages
+#' @filename stages
 
 stage_1_parallel_analysis <- function(
     inputs,
@@ -4314,7 +4314,7 @@ test_that("stage_1_parallel_analysis respects verbose flag", {
 #'
 #' @return Debate results
 #' @keywords internal
-#' @name stages
+#' @filename stages
 
 stage_2_parallel_debates <- function(
     inputs,
@@ -4628,7 +4628,7 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 #' @importFrom glue glue
 #' @importFrom ellmer parallel_chat_structured
 #' @importFrom cli cli_warn
-#' @name stages
+#' @filename stages
 
 stage_3_parallel_judgement <- function(
     inputs,
@@ -5599,7 +5599,7 @@ test_that("llm_stance.character throws error on wrong result length", {
 #'
 #' @importFrom cli cli_abort cli_warn cli_inform
 #' @importFrom rlang is_null as_name
-#' @name methods
+#' @filename methods
 #' @export
 
 llm_stance.data.frame <- function(
@@ -5839,7 +5839,7 @@ test_that("llm_stance.data.frame: `language` evaluates to NULL", {
 #'
 #' @return The input object (invisibly).
 #' @importFrom glue glue
-#' @name methods
+#' @filename methods
 #' @export
 
 print.stance_result <- function(x, ...) {
@@ -5967,7 +5967,7 @@ test_that("print.stance_result handles multiple models and roles", {
 #' @param ... Additional arguments passed to [base::print.table()].
 #'
 #' @return The input object (invisibly).
-#' @name methods
+#' @filename methods
 #' @export
 
 summary.stance_result <- function(object, ...) {
@@ -6056,6 +6056,7 @@ test_that("summary.stance_result handles empty or NA results", {
 #' @param ... Additional arguments passed to [base::as.data.frame()].
 #'
 #' @return Data frame
+#' @filename methods
 #' @export
 
 as.data.frame.stance_result <- function(
@@ -6139,7 +6140,7 @@ test_that("as.data.frame.stance_result ignores additional arguments gracefully",
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return The input object (invisibly).
-#' @name methods
+#' @filename methods
 #' @export
 
 inspect <- function(x, ...) {
@@ -6161,6 +6162,7 @@ inspect <- function(x, ...) {
 #' @param index Integer. The row index of the text item to inspect.
 #'
 #' @return The input object (invisibly).
+#' @filename methods
 #' @export
 
 inspect.stance_result <- function(

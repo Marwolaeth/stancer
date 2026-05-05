@@ -18,12 +18,12 @@ Imports:
     cli,
     ellmer,
     glue,
-    here,
     rlang,
     tibble,
     tictoc,
     yaml
 Suggests: 
+    here,
     knitr,
     mockery,
     R6,

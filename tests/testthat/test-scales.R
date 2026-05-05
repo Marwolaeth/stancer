@@ -4,6 +4,115 @@
 prompts_dir <- system.file('prompts', 'en', package = 'stancer')
 if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
 
+test_that('type_stance_categorical returns enum type', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_categorical(template_file)
+  expect_is(result, "ellmer::TypeEnum")
+})
+
+test_that('type_stance_categorical includes three values', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_categorical(template_file)
+  expect_equal(result@values, c('Positive', 'Negative', 'Neutral'))
+})
+
+test_that('type_stance_categorical loads description from file', {
+  template_file <- file.path(prompts_dir, 'description-categorical.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_categorical(template_file)
+  expect_type(result@description, "character")
+  expect_length(result@description, 1)
+  expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_numeric returns basic type', {
+  template_file <- file.path(prompts_dir, 'description-numeric.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_numeric(template_file)
+  expect_is(result, "ellmer::TypeBasic")
+})
+
+test_that('type_stance_numeric loads description from file', {
+  template_file <- file.path(prompts_dir, 'description-numeric.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_numeric(template_file)
+  expect_type(result@description, "character")
+  expect_length(result@description, 1)
+  expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_likert returns enum type', {
+  template_file <- file.path(prompts_dir, 'description-likert.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_likert(template_file)
+  expect_is(result, "ellmer::TypeEnum")
+})
+
+test_that('type_stance_likert includes five values', {
+  template_file <- file.path(prompts_dir, 'description-likert.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_likert(template_file)
+  expect_equal(
+    result@values,
+    c('Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree')
+  )
+})
+
+test_that('type_stance_likert loads description from file', {
+  template_file <- file.path(prompts_dir, 'description-likert.md')
+  skip_if_not(file.exists(template_file))
+  result <- type_stance_likert(template_file)
+  expect_type(result@description, "character")
+  expect_length(result@description, 1)
+  expect_true(nchar(result@description) > 0)
+})
+
+test_that('type_stance_categorical and likert have different values', {
+  cat_file <- file.path(prompts_dir, 'description-categorical.md')
+  likert_file <- file.path(prompts_dir, 'description-likert.md')
+  skip_if_not(file.exists(cat_file) && file.exists(likert_file))
+
+  cat_result <- type_stance_categorical(cat_file)
+  likert_result <- type_stance_likert(likert_file)
+
+  expect_length(cat_result@values, 3)
+  expect_length(likert_result@values, 5)
+  expect_false(cat_result@description == likert_result@description)
+})
+
+test_that('type_stance_categorical handles missing file', {
+  template_file <- file.path(prompts_dir, 'nonexistent.md')
+  skip_if(file.exists(template_file))
+  expect_error(
+    type_stance_categorical(template_file),
+    class = "error"
+  )
+})
+
+test_that('type_stance_numeric handles missing file', {
+  template_file <- file.path(prompts_dir, 'nonexistent.md')
+  skip_if(file.exists(template_file))
+  expect_error(
+    type_stance_numeric(template_file),
+    class = "error"
+  )
+})
+
+test_that('type_stance_likert handles missing file', {
+  template_file <- file.path(prompts_dir, 'nonexistent.md')
+  skip_if(file.exists(template_file))
+  expect_error(
+    type_stance_likert(template_file),
+    class = "error"
+  )
+})
+
+# Set-up common paths for tests
+prompts_dir <- system.file('prompts', 'en', package = 'stancer')
+if (!dir.exists(prompts_dir)) prompts_dir <- here::here('inst', 'prompts', 'en')
+
 test_that('type_stance_analysis returns object type', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))

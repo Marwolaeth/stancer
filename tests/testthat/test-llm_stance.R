@@ -56,7 +56,7 @@ test_that("llm_stance.character handles chat list and cloning", {
   # Test with single chat
   res <- llm_stance(
     "Text mining is fun", "Text mining", type = "object",
-    chat_base = chat, verbose = FALSE, language = "en"
+    chat_base = chat, verbose = TRUE, language = "en"
   )
 
   expect_named(
@@ -100,6 +100,17 @@ test_that("llm_stance.character handles chat list and cloning", {
   )
   expect_equal(res_list$metadata$n_total, 1)
   expect_s3_class(res_list, "stance_result")
+  
+  # Test with list with one invalid element
+  chat_list <- list(chat, "chat", chat)
+  expect_error(
+    llm_stance(
+      "Text mining is fun", "Text mining", type = "object",
+      chat_base = chat_list, verbose = FALSE, language = "en"
+    ),
+    "Element 2 of",
+    fixed = TRUE
+  )
 })
 
 test_that("llm_stance.character aborts on invalid language", {
@@ -217,25 +228,28 @@ test_that("llm_stance.character: chat_base list length validation", {
 test_that("llm_stance.character: domain_role length validation", {
   # stub_llm_stages()
   mockery::stub(llm_stance.character, "validate_character", TRUE)
+  mockery::stub(llm_stance.character, "validate_fields", TRUE)
   mockery::stub(llm_stance.character, "rlang::is_installed", TRUE)
   mockery::stub(llm_stance.character, "cld2::detect_language", "en")
   mockery::stub(llm_stance.character, "templates_collect", list())
   mockery::stub(
     llm_stance.character,
     "stage_1_parallel_analysis",
-    function(x, ...) x
+    function(x, ...) x$analysis_results <- list("L", "D", "SM")
   )
   mockery::stub(
     llm_stance.character,
     "stage_2_parallel_debates",
-    function(x, ...) x
+    function(x, ...) x$debate_results <- list("Pos", "Neu", "Neg")
   )
   mockery::stub(
     llm_stance.character,
     "stage_3_parallel_judgement",
     function(x, ...) {
       x$judgement_results <- data.frame(
-        stance = "Positive", explanation = "Text analysis results")
+        stance = c("Positive", "Neutral", "Negative"),
+        explanation = c("E1", "E2", "E3")
+      )
       x
     }
   )
@@ -252,6 +266,20 @@ test_that("llm_stance.character: domain_role length validation", {
       verbose = FALSE
     ),
     "must have length 1 or 2",
+    fixed = TRUE
+  )
+  
+  # Warning: multiple domain roles
+  expect_warning(
+    llm_stance(
+      x = c("T1", "T2", "T3"),
+      target = "Text Mining",
+      chat_base = ellmer::chat_mistral(echo = "none"),
+      language = "en",
+      domain_role = c("D1", "D2", "D3"),
+      verbose = TRUE
+    ),
+    "Multiple domain roles detected",
     fixed = TRUE
   )
 })
@@ -297,79 +325,71 @@ test_that("llm_stance.character: likert scale post-processing", {
   expect_equal(as.character(res$summary$stance), "Strongly Agree")
 })
 
-test_that('llm_stance.data.frame is a function', {
-  expect_true(inherits(llm_stance.data.frame, 'function'))
-})
-
-test_that('llm_stance.data.frame rejects wrong `data` argument', {
-  expect_error(llm_stance(x = list()), "no applicable method", fixed = TRUE)
-})
-
-test_that("llm_stance.data.frame works with tidy evaluation", {
-  df <- data.frame(my_text = "R is smart and tidy", my_target = "R language")
-
-  # Mock the character method to return a dummy result
-  mock_res <- list(
-    summary = data.frame(
-      stance = "Positive",
-      explanation = "Text mining result"
-    ),
-    metadata = list(status = "ok")
-  )
-  mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
-
-  res_df <- llm_stance(
-    df, my_text, my_target, chat_base = list(), .output_col = ".stance",
-    language = "en"
-  )
-
-  expect_true(".stance" %in% names(res_df))
-  expect_equal(res_df$.stance, "Positive")
-  expect_equal(attr(res_df, "llm_stance_metadata")$status, "ok")
-})
-
-test_that("llm_stance.data.frame: missing column and row mismatch", {
-  df <- data.frame(band = "Kamelot")
-
-  # 1. Missing column error
+test_that("llm_stance.character rejects invalid argument values", {
+  mockery::stub(llm_stance.character, "validate_character", TRUE)
+  
+  # Invalid `type`
   expect_error(
     llm_stance(
-      df,
-      text = non_existent,
-      target = band,
-      type = "object",
-      chat_base = list()
+      "Text mining is interesting",
+      target = "Text Mining",
+      type = 111L
     ),
-    "in data or environment",
+    "must be a character vector, got",
     fixed = TRUE
   )
-
-  # 2. Row mismatch warning
-  mock_res <- list(
-    summary = data.frame(
-      stance = "Positive",
-      explanation = "Text mining result"
+  
+  # Invalid `domain_role`
+  expect_error(
+    llm_stance(
+      "Content analysis is interesting",
+      target = "Content Analysis is interesting",
+      type = "statement",
+      language = "en",
+      domain_role = 111L
     ),
-    metadata = list(status = "ok")
-  )
-  mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
-
-  df_long <- data.frame(
-    txt = c("T1", "T2"),
-    trg = c("A", "B")
-  ) # 2 rows input
-
-  expect_warning(
-    df_stance <- llm_stance(
-      df_long,
-      text = txt,
-      target = trg,
-      language = "uk",
-      chat_base = list(),
-      verbose = FALSE
-    ),
-    "Result has 1 rows, but data has 2 rows",
+    "must be a character vector, got",
     fixed = TRUE
   )
-  expect_true(is.na(df_stance[[".stance"]][2]))
+})
+
+test_that("llm_stance.character throws error on wrong result length", {
+  # Custom stub for stage 3 to return a specific Likert value
+  mockery::stub(llm_stance.character, "validate_character", TRUE)
+  mockery::stub(llm_stance.character, "templates_collect", list())
+  mockery::stub(llm_stance.character, "validate_stage", function(x, ...) x)
+  mockery::stub(
+    llm_stance.character,
+    "stage_1_parallel_analysis",
+    function(x, ...) x
+  )
+  mockery::stub(
+    llm_stance.character,
+    "stage_2_parallel_debates",
+    function(x, ...) x
+  )
+  mockery::stub(
+    llm_stance.character,
+    "stage_3_parallel_judgement",
+    function(x, ...) {
+      x$judgement_results <- data.frame(
+        stance = "Strongly Agree",
+        explanation = "Likert scale result"
+      )
+      x
+    })
+
+  llm_stance(
+    x = c("T1", "T2"),
+    target = "T",
+    type = "statement",
+    chat_base = ellmer::chat_mistral(echo = "none"),
+    language = "uk",
+    scale = "likert",
+    verbose = TRUE
+  ) |>
+    expect_error(
+      "Final stance judgement returned unexpected results",
+      fixed = TRUE
+    )
 })

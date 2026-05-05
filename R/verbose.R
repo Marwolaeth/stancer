@@ -9,6 +9,7 @@
 #' @return Formatted timing message
 #' @keywords internal
 #' @importFrom glue glue
+#'
 #' @noRd
 
 stage_complete <- function(tic, toc, msg) {

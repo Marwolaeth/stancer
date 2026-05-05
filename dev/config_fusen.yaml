@@ -2,61 +2,27 @@ flat_stancer.Rmd:
   path: dev/flat_stancer.Rmd
   state: active
   R:
-  - R/abort.R
-  - R/as-data-frame-stance_result.R
-  - R/catch.R
-  - R/execute_role.R
-  - R/inspect.R
-  - R/l.R
+  - R/utils.R
+  - R/methods.R
+  - R/agents.R
+  - R/localisation.R
   - R/llm_stance.R
-  - R/load_translations.R
-  - R/prepare_debater_chats.R
-  - R/prepare_expert_chats.R
-  - R/prepare_judger_chats.R
-  - R/print-stance_result.R
-  - R/templates_collect.R
-  - R/recycle_arg.R
-  - R/stage_1_parallel_analysis.R
-  - R/stage_2_parallel_debates.R
-  - R/stage_3_parallel_judgement.R
-  - R/stage_complete.R
-  - R/stancer_available_languages.R
-  - R/stancer_check_translations.R
-  - R/summary-stance_result.R
-  - R/tasks_validate.R
-  - R/truncate.R
-  - R/type_stance_analysis.R
-  - R/type_stance.R
-  - R/type_to_term.R
-  - R/validate_fields.R
+  - R/prompting.R
+  - R/stages.R
+  - R/verbose.R
+  - R/scales.R
+  - R/validate.R
   tests:
-  - tests/testthat/test-truncate.R
-  - tests/testthat/test-abort.R
-  - tests/testthat/test-catch.R
-  - tests/testthat/test-validate_fields.R
-  - tests/testthat/test-recycle_arg.R
-  - tests/testthat/test-stage_complete.R
-  - tests/testthat/test-load_translations.R
-  - tests/testthat/test-stancer_available_languages.R
-  - tests/testthat/test-l.R
-  - tests/testthat/test-stancer_check_translations.R
-  - tests/testthat/test-type_to_term.R
-  - tests/testthat/test-type_stance.R
-  - tests/testthat/test-type_stance_analysis.R
-  - tests/testthat/test-templates_collect.R
-  - tests/testthat/test-tasks_validate.R
-  - tests/testthat/test-prepare_expert_chats.R
-  - tests/testthat/test-execute_role.R
-  - tests/testthat/test-prepare_debater_chats.R
-  - tests/testthat/test-prepare_judger_chats.R
-  - tests/testthat/test-stage_1_parallel_analysis.R
-  - tests/testthat/test-stage_2_parallel_debates.R
-  - tests/testthat/test-stage_3_parallel_judgement.R
+  - tests/testthat/test-utils.R
+  - tests/testthat/test-validate.R
+  - tests/testthat/test-verbose.R
+  - tests/testthat/test-localisation.R
+  - tests/testthat/test-scales.R
+  - tests/testthat/test-prompting.R
+  - tests/testthat/test-agents.R
+  - tests/testthat/test-stages.R
   - tests/testthat/test-llm_stance.R
-  - tests/testthat/test-print-stance_result.R
-  - tests/testthat/test-summary-stance_result.R
-  - tests/testthat/test-as-data-frame-stance_result.R
-  - tests/testthat/test-inspect.R
+  - tests/testthat/test-methods.R
   vignettes: vignettes/get-started.Rmd
   inflate:
     flat_file: dev/flat_stancer.Rmd

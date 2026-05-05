@@ -107,7 +107,7 @@ stancer_available_languages()
 
 
 
-## Localization Helper
+## Localisation Helper
 
 
 ## Check Translations

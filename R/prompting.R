@@ -12,7 +12,7 @@
 #'
 #' - **linguist**: Performs linguistic analysis of statements
 #' - **domain**: Provides domain-specific expertise and context
-#' - **interpreter**: Interprets and clarifies statements
+#' - **interpreter**: Interprets social media content
 #' - **debater**: Presents arguments and counter-arguments
 #' - **judger**: Makes final stance judgements (supports additional options)
 #'
@@ -69,6 +69,7 @@
 #' [ellmer::interpolate_file()] for template interpolation details.
 #'
 #' @keywords internal
+#'
 #' @noRd
 #' @examples
 #' # Prepare prompts for linguistic analysis
@@ -134,7 +135,9 @@ prompts_prepare <- function(
 ) {
   role <- rlang::arg_match(
     role,
-    values = c('linguist', 'domain', 'interpreter', 'debater', 'judger'),
+    values = c(
+      'linguist', 'domain', 'interpreter', 'debater', 'judger'
+    ),
     multiple = FALSE
   )
   language <- rlang::arg_match(
@@ -207,6 +210,111 @@ prompts_prepare <- function(
   prompts
 }
 
+#' Prepare chat objects and tasks for execution
+#'
+#' @description
+#' Organises the final structure for parallel execution by cloning the base
+#' chat object and pairing it with the corresponding system and user prompts.
+#'
+#' @details
+#' This function handles two main scenarios for system prompts:
+#' 1. A single system prompt applied to all tasks.
+#' 2. A vector of system prompts matching the number of texts (e.g., when
+#'    different domain experts are assigned to different texts).
+#'
+#' The function clones the `chat_base` for each system prompt to ensure
+#' environment isolation during parallel processing. It also performs
+#' validation on the user tasks using [tasks_validate()].
+#'
+#' @param chat_base An `ellmer::Chat` object used as a template.
+#' @param prompts A list containing `system` (character vector) and
+#'   `task` (character vector) prompts, typically from [prompts_prepare()].
+#' @param n_texts Integer. The expected number of texts/tasks to process.
+#'
+#' @return A list with two elements:
+#' - `chats`: A list of cloned and configured `ellmer::Chat` objects.
+#' - `tasks`: A character vector of user prompts (tasks).
+#'
+#' @keywords internal
+#'
+#' @noRd
+
+tasks_prepare <- function(chat_base, prompts, n_texts) {
+  # General case when there may be > 1 system prompts
+  ## (e.g. multiple domain roles)
+  chats <- lapply(
+    prompts$system,
+    function(system_prompt) {
+      # Each time clone the base chat
+      chat <- chat_base$clone(deep = TRUE)
+      # Set a system prompt
+      chat$set_system_prompt(system_prompt)
+      return(chat)
+    }
+  )
+
+  if (length(chats) != 1 & length(chats) != n_texts) {
+    abort(
+      "Length of system and user prompts must match {.val {n_texts}}, \\
+            got {.val {length(chats)}}"
+    )
+  }
+
+  tasks_validate(prompts$task, n_texts)
+
+  list(
+    chats = chats,
+    tasks = prompts$task
+  )
+}
+
+#' Validate task configuration
+#'
+#' @description
+#' Internal helper to ensure that the generated tasks (user prompts) meet
+#' the expected criteria after interpolation. It checks for correct length,
+#' data type, and ensures no empty strings were produced.
+#'
+#' @param tasks A character vector of interpolated tasks.
+#' @param expected_length The number of tasks expected (usually matching the number of input texts).
+#'
+#' @return Invisibly TRUE if validation passes or throws an error if tasks are not a character vector, have incorrect length, or contain empty strings.
+#'
+#' @keywords internal
+#'
+#' @noRd
+
+tasks_validate <- function(tasks, expected_length) {
+  rlang::try_fetch(
+    ellmer:::check_number_whole(expected_length, min = 1),
+    error = function(e) abort("Wrong {.arg expected_length} argument.")
+  )
+
+  if (any(is.na(tasks))) {
+    abort("User prompt list contains missing values")
+  }
+
+  if (length(tasks) != expected_length || !is.character(tasks)) {
+    abort(
+      c(
+        "User prompt interpolation returned unexpected results",
+        "i" = "Consider checking variable placeholders in user templates"
+      )
+    )
+  }
+
+  if (any(nchar(tasks) == 0)) {
+    abort(
+      c(
+        "User prompt is empty after interpolation",
+        "i" = "Check that all required variables are provided"
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
 #' Collect prompt template file paths
 #'
 #' @description
@@ -224,6 +332,7 @@ prompts_prepare <- function(
 #'   `system-linguist`, `scale_description`) and values are absolute file paths.
 #'
 #' @keywords internal
+#'
 #' @noRd
 templates_collect <- function(prompts_dir, language, scale) {
   # 1. Determine default package directories
@@ -231,10 +340,10 @@ templates_collect <- function(prompts_dir, language, scale) {
     file.path('prompts', language),
     package = 'stancer'
   )
-  # Fallback for development environment
-  if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
-    DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
-  }
+  # Fall-back for development environment
+  # if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
+  #   DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
+  # }
 
   # 2. Filter existing directories
   search_dirs <- c(prompts_dir, DEFAULT_PROMPTS_DIR) |>

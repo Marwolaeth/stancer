@@ -7,6 +7,7 @@
 #' @return Invisibly TRUE or throws error
 #' @keywords internal
 #' @importFrom rlang is_character
+#'
 #' @noRd
 
 validate_character <- function(x) {
@@ -50,6 +51,7 @@ validate_character <- function(x) {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
+#'
 #' @noRd
 
 validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
@@ -81,6 +83,7 @@ validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
+#'
 #' @noRd
 
 validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
@@ -102,6 +105,7 @@ validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
 #'
 #' @return Unmodified `x` or throws an error
 #' @keywords internal
+#'
 #' @noRd
 
 validate_stage <- function(x, stage_name) {
