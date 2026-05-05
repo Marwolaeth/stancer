@@ -1,11 +1,11 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# stancer
+# stancer <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
 
-[![R-CMD-check](README_files/figure-gfm/d205cbd6783332a212c5ae92d73c77178c2d2f28.txt)](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](README_files/figure-gfm/8d104ea1f0b09e9ef1e896402573c488ab751c89.svg)](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
 coverage](README_files/figure-gfm/343d98c24a955312cfefd6bd5947f17e4310edfb.shtml)](https://app.codecov.io/gh/Marwolaeth/stancer)
 <!-- badges: end -->
