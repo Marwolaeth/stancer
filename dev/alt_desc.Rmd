@@ -1,0 +1,34 @@
+---
+title: "Description"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+**stancer** is an R package for automated stance analysis using an ensemble of LLM agents. It determines whether text expresses a favorable, unfavorable, or neutral stance toward a specific target.
+
+### Key Features
+
+- **COLA Framework**: Implements the Collaborative rOle-infused LLM-based Agents framework (Lan et al., 2024), which:
+  - Deploys specialized agents (linguists, domain experts, social media readers) to analyze text
+  - Stages analysis through multidimensional review, reasoning-enhanced debate, and final consensus
+  - Combines multiple perspectives for more robust stance detection
+
+- **Language Support**: Built-in prompts for English, Ukrainian, and Russian with automatic language detection
+
+- **Flexible Integration**: Works with the `ellmer` package, supporting multiple LLM providers (OpenAI, Anthropic, Ollama, Mistral, etc.)
+
+- **Data Frame Support**: Seamless processing of entire datasets with tidy output
+
+- **Customizable**: Allows custom prompts for different languages or specialized use cases
+
+### Technical Details
+
+- **Primary Language**: 99.6% R, 0.4% TeX
+- **License**: Creative Commons Attribution 4.0 International
+- **Status**: Experimental (lifecycle badge)
+- **Created**: November 18, 2025
+- **Topics**: Stance detection, LLM-based content analysis, text classification, prompt generation, and more
+
+### Use Case Example
+
+The package excels at analysing sentiment toward topics like climate policies, where it can process tweets or text to classify stance as Positive, Neutral, or Negative with reasoning provided by the LLM agents.
