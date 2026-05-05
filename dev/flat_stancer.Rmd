@@ -100,6 +100,7 @@ inspect(result, "analysis", "linguistic")
 #' @examples
 #' truncate(c(-1, 0, 5, 10), a = 0, b = 5)
 #' # Returns: 0, 0, 5, 5
+#' @name utils
 
 truncate <- function(x, a, b) {
   if (!is.numeric(x)) {
@@ -253,6 +254,7 @@ test_that('truncate rejects NULL values', {
 #' @return Throws error
 #' @keywords internal
 #' @importFrom cli cli_abort
+#' @name utils
 
 abort <- function(msg) {
   cli::cli_abort(
@@ -596,6 +598,7 @@ test_that('abort with unicode characters', {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character try_fetch
 #' @importFrom cli cli_abort
+#' @name utils
 
 catch <- function(
     expr,
@@ -790,6 +793,7 @@ test_that('catch_eval rejects wrong arguments', {
 #' @return Result of evaluation or `NULL`
 #' @keywords internal
 #' @importFrom rlang try_fetch
+#' @name utils
 
 safe_eval <- function(
     quo,
@@ -839,6 +843,7 @@ test_that('safe_eval returns NULL on evaluation failure', {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
+#' @name validate
 
 validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
   if (!rlang::is_scalar_character(input_name)) {
@@ -926,6 +931,7 @@ test_that("validate_fields works with named vectors", {
 #' @keywords internal
 #' @importFrom rlang is_scalar_character
 #' @importFrom cli cli_abort
+#' @name validate
 
 validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
   if (!rlang::is_scalar_character(input_name)) {
@@ -1016,6 +1022,7 @@ test_that('validate_inputs rejects empty vector when expecting non-zero length',
 #' @return Invisibly TRUE or throws error
 #' @keywords internal
 #' @importFrom rlang is_character
+#' @name validate
 
 validate_character <- function(x) {
   arg_name <- deparse(substitute(x))
@@ -1161,6 +1168,7 @@ test_that('validate_character error includes removal suggestion', {
 #'
 #' @return Unmodified `x` or throws an error
 #' @keywords internal
+#' @name validate
 
 validate_stage <- function(x, stage_name) {
   if (is.null(x)) {
@@ -1198,6 +1206,7 @@ test_that('validate_stage rejects NULL input', {
 #'
 #' @return Recycled argument values
 #' @keywords internal
+#' @name utils
 
 recycle_arg <- function(arg, n) {
   arg_name <- deparse(substitute(arg))
@@ -1261,6 +1270,7 @@ test_that('recycle_arg includes arg name in error', {
 #' @return Formatted timing message
 #' @keywords internal
 #' @importFrom glue glue
+#' @name verbose
 
 stage_complete <- function(tic, toc, msg) {
   tocmsg <- paste0(round(toc - tic, 3), " seconds elapsed")
@@ -1311,10 +1321,10 @@ test_that('stage_complete rounds time to 3 decimals', {
 #'
 #' @return List containing translations for all supported languages
 #' @keywords internal
+#' @name localisation
 
 load_translations <- function() {
   yaml_file <- system.file("i18n/translations.yaml", package = "stancer")
-  if (!file.exists(yaml_file)) yaml_file <- here::here("inst/i18n/translations.yaml")
   rlang::try_fetch(
     yaml::read_yaml(yaml_file),
     error = function(e) cli::cli_abort("Tranlsations not found.")
@@ -1340,6 +1350,7 @@ test_that('load_translations works', {
 #' Get available languages for stancer
 #'
 #' @return Character vector of supported language codes
+#' @name localisation
 #' @export
 
 stancer_available_languages <- function() {
@@ -1356,14 +1367,14 @@ test_that('stancer_available_languages is a function', {
   expect_true(inherits(stancer_available_languages, 'function'))
 })
 
-test_that('load_translations works', {
+test_that('stancer_available_languages works', {
   expect_no_error(stancer_available_languages())
   expect_is(stancer_available_languages(), 'character')
   expect_equal(stancer_available_languages(), c('en', 'uk', 'ru'))
 })
 ```
 
-## Localization Helper
+## Localisation Helper
 
 ```{r function-l}
 #' Get localised string
@@ -1374,6 +1385,7 @@ test_that('load_translations works', {
 #'
 #' @return Character string with translation
 #' @keywords internal
+#' @name localisation
 
 l <- function(language, caption_id, case = NULL) {
   # Check lanuage
@@ -1471,6 +1483,15 @@ test_that('l() rejects invalid case value', {
   )
 })
 
+# Test 5a: l() rejects non-matching case value
+test_that('l() rejects non-matching case value', {
+  expect_error(
+    l(language = "en", caption_id = "statement", case = "likert"),
+    "not found for",
+    fixed = TRUE
+  )
+})
+
 # Test 6: l() requires case for dictionary entries with cases
 test_that('l() requires case for multi-case entries', {
   expect_error(
@@ -1555,6 +1576,7 @@ test_that('l() works with likert case type', {
 #' Invisibly `TRUE`. Called for side effects (printing to console).
 #'
 #' @keywords internal
+#' @name localisation
 #' @export
 
 stancer_check_translations <- function() {
@@ -1659,6 +1681,7 @@ test_that('stancer_check_translations handles all languages equally', {
 #'
 #' @return Character string with localised term
 #' @keywords internal
+#' @name localisation
 
 type_to_term <- function(
     type = c('object', 'statement'),
@@ -1998,6 +2021,7 @@ test_that('type_stance_likert handles missing file', {
 #'
 #'
 #' @keywords internal
+#' @name type_stance
 type_stance_analysis <- function(language, description_file, scale = "categorical") {
   # Validate scale parameter
   scale <- rlang::arg_match(scale, c("numeric", "likert", "categorical"))
@@ -2230,16 +2254,17 @@ test_that('type_stance_analysis works with all scale types', {
 #'   `system-linguist`, `scale_description`) and values are absolute file paths.
 #'
 #' @keywords internal
+#' @name prompting
 templates_collect <- function(prompts_dir, language, scale) {
   # 1. Determine default package directories
   DEFAULT_PROMPTS_DIR <- system.file(
     file.path('prompts', language),
     package = 'stancer'
   )
-  # Fallback for development environment
-  if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
-    DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
-  }
+  # Fall-back for development environment
+  # if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
+  #   DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
+  # }
 
   # 2. Filter existing directories
   search_dirs <- c(prompts_dir, DEFAULT_PROMPTS_DIR) |>
@@ -2364,6 +2389,20 @@ test_that("templates_collect prioritises user directory over system directory", 
   # Other files should still come from sys_dir
   expect_match(res$scale_description, sys_dir, fixed = TRUE)
 })
+
+test_that("templates_collect throws error if no folders found", {
+  user_dir <- withr::local_tempdir(pattern = "custom")
+
+  mockery::stub(templates_collect, "length", 0)
+
+  expect_error(
+    templates_collect(
+      prompts_dir = user_dir, language = "en", scale = "likert"
+    ),
+    "No prompt directories found",
+    fixed = TRUE
+  )
+})
 ```
 
 ```{r function-prompts_prepare}
@@ -2379,7 +2418,7 @@ test_that("templates_collect prioritises user directory over system directory", 
 #'
 #' - **linguist**: Performs linguistic analysis of statements
 #' - **domain**: Provides domain-specific expertise and context
-#' - **interpreter**: Interprets and clarifies statements
+#' - **interpreter**: Interprets social media content
 #' - **debater**: Presents arguments and counter-arguments
 #' - **judger**: Makes final stance judgements (supports additional options)
 #'
@@ -2436,6 +2475,7 @@ test_that("templates_collect prioritises user directory over system directory", 
 #' [ellmer::interpolate_file()] for template interpolation details.
 #'
 #' @keywords internal
+#' @name prompting
 prompts_prepare <- function(
     role,
     templates,
@@ -2446,7 +2486,9 @@ prompts_prepare <- function(
 ) {
   role <- rlang::arg_match(
     role,
-    values = c('linguist', 'domain', 'interpreter', 'debater', 'judger'),
+    values = c(
+      'linguist', 'domain', 'interpreter', 'debater', 'judger'
+    ),
     multiple = FALSE
   )
   language <- rlang::arg_match(
@@ -3006,6 +3048,60 @@ test_that('prompts_prepare produces different results for different target', {
   expect_identical(result1$system, result2$system)
   expect_disjoint(result1$task, result2$task)
 })
+
+test_that('prompts_prepare fails with empty user prompt', {
+  templates <- list(
+    `system-judger` = file.path(prompts_dir, 'system-judger.md'),
+    `user-judger` = file.path(prompts_dir, 'user-judger.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+
+  texts <- c("content analysis", "text mining")
+
+  mockery::stub(prompts_prepare, "ellmer::interpolate_file", NULL)
+  prompts_prepare(
+    role = "judger",
+    templates = templates,
+    language = "en",
+    add_reference_resolution = TRUE,
+    add_statement_resolution = TRUE,
+    target = "content analysis",
+    text = texts
+  ) |>
+    expect_error("User prompt is NULL", fixed = TRUE)
+})
+
+test_that('prompts_prepare fails with empty strings', {
+  templates <- list(
+    `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
+    `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
+  )
+  skip_if_not(all(file.exists(unlist(templates))))
+
+  texts <- c("content analysis", "text mining")
+
+  m <- mockery::mock("System prompt", "")
+  mockery::stub(prompts_prepare, "ellmer::interpolate_file", m)
+  prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "content analysis",
+    text = texts
+  ) |>
+    expect_error("User prompt is empty", fixed = TRUE)
+  
+  m <- mockery::mock("", "User prompt")
+  mockery::stub(prompts_prepare, "ellmer::interpolate_file", m)
+  prompts_prepare(
+    role = "linguist",
+    templates = templates,
+    language = "en",
+    target = "content analysis",
+    text = texts
+  ) |>
+    expect_error("System prompt is empty", fixed = TRUE)
+})
 ```
 
 ## Tasks
@@ -3024,6 +3120,7 @@ test_that('prompts_prepare produces different results for different target', {
 #' @return Invisibly TRUE if validation passes or throws an error if tasks are not a character vector, have incorrect length, or contain empty strings.
 #'
 #' @keywords internal
+#' @name prompting
 
 tasks_validate <- function(tasks, expected_length) {
   rlang::try_fetch(
@@ -3152,6 +3249,7 @@ test_that("tasks_validate rejects fractional `expected_length`", {
 #' - `tasks`: A character vector of user prompts (tasks).
 #'
 #' @keywords internal
+#' @name prompting
 
 tasks_prepare <- function(chat_base, prompts, n_texts) {
   # General case when there may be > 1 system prompts
@@ -3314,6 +3412,7 @@ test_that("tasks_prepare clones the base chat deeply", {
 #'
 #' @keywords internal
 #' @importFrom rlang arg_match
+#' @name agents
 
 prepare_expert_chats <- function(
     inputs,
@@ -3499,6 +3598,7 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
 #'
 #' @keywords internal
 #' @importFrom ellmer parallel_chat_text
+#' @name agents
 
 execute_role <- function(
     expert_role,
@@ -3659,6 +3759,45 @@ test_that("execute_role prints progress message when verbose is TRUE", {
     regexp = "MyInfo..."
   )
 })
+
+test_that("execute_role throws error on unexpected chat response", {
+  # 1. Set-up Mocks
+  # MockChat, but it returns wrong values
+  MockChatNumeric <- R6::R6Class(
+    "MockChatNumeric",
+    public = list(
+      system_prompt = NULL,
+      set_system_prompt = function(prompt) {
+        self$system_prompt <- prompt
+      },
+      chat = function(..., echo = NULL) seq_along(list(...))
+    )
+  )
+  
+  mockery::stub(
+    execute_role,
+    "prepare_expert_chats",
+    list(
+      # Multiple chats - sequential execution
+      chats = list(MockChatNumeric$new(), MockChatNumeric$new()),
+      tasks = c("Content Analysis 1", "Content Analysis 2")
+    )
+  )
+  inputs <- list(texts = c("T1", "T2"))
+  
+  # 2. Execute and Expect Error
+  execute_role(
+    "linguist",
+    inputs,
+    MockChat$new(),
+    "Testing Chat Output",
+    verbose = TRUE
+  ) |>
+    expect_error(
+      "Unexpected results in",
+      fixed = TRUE
+    )
+})
 ```
 
 ---
@@ -3687,6 +3826,7 @@ test_that("execute_role prints progress message when verbose is TRUE", {
 #'   - `tasks`: A character vector of user prompts for each input text.
 #'
 #' @keywords internal
+#' @name agents
 
 prepare_debater_chats <- function(
     stance,
@@ -3831,6 +3971,7 @@ test_that("prepare_debater_chats fails with multiple system prompts", {
 #'
 #' @return List of chat configurations
 #' @keywords internal
+#' @name agents
 
 prepare_judger_chats <- function(
     inputs,
@@ -4003,6 +4144,7 @@ test_that("prepare_judger_chats correctly handles statement resolution flag", {
 #' @keywords internal
 #' @importFrom tictoc tic toc
 #' @importFrom glue glue
+#' @name stages
 
 stage_1_parallel_analysis <- function(
     inputs,
@@ -4172,6 +4314,7 @@ test_that("stage_1_parallel_analysis respects verbose flag", {
 #'
 #' @return Debate results
 #' @keywords internal
+#' @name stages
 
 stage_2_parallel_debates <- function(
     inputs,
@@ -4301,7 +4444,11 @@ test_that("stage_2_parallel_debates executes three debate branches", {
   mockery::stub(stage_2_parallel_debates, "ellmer::parallel_chat_text", mock_parallel)
 
   # 3. Execute
-  result <- stage_2_parallel_debates(inputs, MockChat$new(), verbose = FALSE)
+  result <- stage_2_parallel_debates(
+    inputs,
+    MockChat$new(),
+    verbose = TRUE
+  )
 
   # 4. Verify
   expect_named(result$debate_results, c("positive", "negative", "neutral"))
@@ -4481,6 +4628,7 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
 #' @importFrom glue glue
 #' @importFrom ellmer parallel_chat_structured
 #' @importFrom cli cli_warn
+#' @name stages
 
 stage_3_parallel_judgement <- function(
     inputs,
@@ -4609,7 +4757,11 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
   )
 
   # 3. Execute
-  result <- stage_3_parallel_judgement(inputs, MockChat$new(), verbose = FALSE)
+  result <- stage_3_parallel_judgement(
+    inputs,
+    MockChat$new(),
+    verbose = TRUE
+  )
 
   # 4. Verify
   mockery::expect_called(mock_parallel, 1)
@@ -5099,7 +5251,7 @@ test_that("llm_stance.character handles chat list and cloning", {
   # Test with single chat
   res <- llm_stance(
     "Text mining is fun", "Text mining", type = "object",
-    chat_base = chat, verbose = FALSE, language = "en"
+    chat_base = chat, verbose = TRUE, language = "en"
   )
 
   expect_named(
@@ -5143,6 +5295,17 @@ test_that("llm_stance.character handles chat list and cloning", {
   )
   expect_equal(res_list$metadata$n_total, 1)
   expect_s3_class(res_list, "stance_result")
+  
+  # Test with list with one invalid element
+  chat_list <- list(chat, "chat", chat)
+  expect_error(
+    llm_stance(
+      "Text mining is fun", "Text mining", type = "object",
+      chat_base = chat_list, verbose = FALSE, language = "en"
+    ),
+    "Element 2 of",
+    fixed = TRUE
+  )
 })
 
 test_that("llm_stance.character aborts on invalid language", {
@@ -5260,25 +5423,28 @@ test_that("llm_stance.character: chat_base list length validation", {
 test_that("llm_stance.character: domain_role length validation", {
   # stub_llm_stages()
   mockery::stub(llm_stance.character, "validate_character", TRUE)
+  mockery::stub(llm_stance.character, "validate_fields", TRUE)
   mockery::stub(llm_stance.character, "rlang::is_installed", TRUE)
   mockery::stub(llm_stance.character, "cld2::detect_language", "en")
   mockery::stub(llm_stance.character, "templates_collect", list())
   mockery::stub(
     llm_stance.character,
     "stage_1_parallel_analysis",
-    function(x, ...) x
+    function(x, ...) x$analysis_results <- list("L", "D", "SM")
   )
   mockery::stub(
     llm_stance.character,
     "stage_2_parallel_debates",
-    function(x, ...) x
+    function(x, ...) x$debate_results <- list("Pos", "Neu", "Neg")
   )
   mockery::stub(
     llm_stance.character,
     "stage_3_parallel_judgement",
     function(x, ...) {
       x$judgement_results <- data.frame(
-        stance = "Positive", explanation = "Text analysis results")
+        stance = c("Positive", "Neutral", "Negative"),
+        explanation = c("E1", "E2", "E3")
+      )
       x
     }
   )
@@ -5295,6 +5461,20 @@ test_that("llm_stance.character: domain_role length validation", {
       verbose = FALSE
     ),
     "must have length 1 or 2",
+    fixed = TRUE
+  )
+  
+  # Warning: multiple domain roles
+  expect_warning(
+    llm_stance(
+      x = c("T1", "T2", "T3"),
+      target = "Text Mining",
+      chat_base = ellmer::chat_mistral(echo = "none"),
+      language = "en",
+      domain_role = c("D1", "D2", "D3"),
+      verbose = TRUE
+    ),
+    "Multiple domain roles detected",
     fixed = TRUE
   )
 })
@@ -5339,6 +5519,75 @@ test_that("llm_stance.character: likert scale post-processing", {
   expect_true(is.ordered(res$summary$stance))
   expect_equal(as.character(res$summary$stance), "Strongly Agree")
 })
+
+test_that("llm_stance.character rejects invalid argument values", {
+  mockery::stub(llm_stance.character, "validate_character", TRUE)
+  
+  # Invalid `type`
+  expect_error(
+    llm_stance(
+      "Text mining is interesting",
+      target = "Text Mining",
+      type = 111L
+    ),
+    "must be a character vector, got",
+    fixed = TRUE
+  )
+  
+  # Invalid `domain_role`
+  expect_error(
+    llm_stance(
+      "Content analysis is interesting",
+      target = "Content Analysis is interesting",
+      type = "statement",
+      language = "en",
+      domain_role = 111L
+    ),
+    "must be a character vector, got",
+    fixed = TRUE
+  )
+})
+
+test_that("llm_stance.character throws error on wrong result length", {
+  # Custom stub for stage 3 to return a specific Likert value
+  mockery::stub(llm_stance.character, "validate_character", TRUE)
+  mockery::stub(llm_stance.character, "templates_collect", list())
+  mockery::stub(llm_stance.character, "validate_stage", function(x, ...) x)
+  mockery::stub(
+    llm_stance.character,
+    "stage_1_parallel_analysis",
+    function(x, ...) x
+  )
+  mockery::stub(
+    llm_stance.character,
+    "stage_2_parallel_debates",
+    function(x, ...) x
+  )
+  mockery::stub(
+    llm_stance.character,
+    "stage_3_parallel_judgement",
+    function(x, ...) {
+      x$judgement_results <- data.frame(
+        stance = "Strongly Agree",
+        explanation = "Likert scale result"
+      )
+      x
+    })
+
+  llm_stance(
+    x = c("T1", "T2"),
+    target = "T",
+    type = "statement",
+    chat_base = ellmer::chat_mistral(echo = "none"),
+    language = "uk",
+    scale = "likert",
+    verbose = TRUE
+  ) |>
+    expect_error(
+      "Final stance judgement returned unexpected results",
+      fixed = TRUE
+    )
+})
 ```
 
 ### DATA.FRAME METHOD
@@ -5350,6 +5599,7 @@ test_that("llm_stance.character: likert scale post-processing", {
 #'
 #' @importFrom cli cli_abort cli_warn cli_inform
 #' @importFrom rlang is_null as_name
+#' @name methods
 #' @export
 
 llm_stance.data.frame <- function(
@@ -5368,11 +5618,6 @@ llm_stance.data.frame <- function(
     ...
 ) {
   data <- x
-  if (!is.data.frame(data)) {
-    cli::cli_abort(
-      "{.arg x} must be a data.frame, got {.cls {class(data)}}"
-    )
-  }
 
   # Tidy evaluation
   text_quo <- rlang::enquo(text)
@@ -5471,7 +5716,11 @@ test_that('llm_stance.data.frame is a function', {
 })
 
 test_that('llm_stance.data.frame rejects wrong `data` argument', {
-  expect_error(llm_stance(x = list()), "no applicable method", fixed = TRUE)
+  expect_error(
+    llm_stance(x = list()),
+    "no applicable method",
+    fixed = TRUE
+  )
 })
 
 test_that("llm_stance.data.frame works with tidy evaluation", {
@@ -5488,8 +5737,10 @@ test_that("llm_stance.data.frame works with tidy evaluation", {
   mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
 
   res_df <- llm_stance(
-    df, my_text, my_target, chat_base = list(), .output_col = ".stance",
-    language = "en"
+    df, my_text, my_target, chat_base = list(),
+    .output_col = ".stance",
+    language = "en",
+    verbose = TRUE
   )
 
   expect_true(".stance" %in% names(res_df))
@@ -5535,12 +5786,38 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
       target = trg,
       language = "uk",
       chat_base = list(),
-      verbose = FALSE
+      verbose = TRUE
     ),
     "Result has 1 rows, but data has 2 rows",
     fixed = TRUE
   )
   expect_true(is.na(df_stance[[".stance"]][2]))
+})
+
+test_that("llm_stance.data.frame: `language` evaluates to NULL", {
+  df <- data.frame(band = "Kamelot", text = "Kamelot is great")
+
+  mock_res <- list(
+    summary = data.frame(
+      stance = "Strongly Agree",
+      explanation = "Likert scale result"
+    ),
+    metadata = list(status = "ok")
+  )
+  mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
+  
+  expect_warning(
+    llm_stance(
+      df,
+      text = text,
+      target = band,
+      type = "object",
+      language = NULL,
+      chat_base = list()
+    ),
+    "in data or environment",
+    fixed = TRUE
+  )
 })
 ```
 
@@ -5562,6 +5839,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
 #'
 #' @return The input object (invisibly).
 #' @importFrom glue glue
+#' @name methods
 #' @export
 
 print.stance_result <- function(x, ...) {
@@ -5689,6 +5967,7 @@ test_that("print.stance_result handles multiple models and roles", {
 #' @param ... Additional arguments passed to [base::print.table()].
 #'
 #' @return The input object (invisibly).
+#' @name methods
 #' @export
 
 summary.stance_result <- function(object, ...) {
@@ -5860,6 +6139,7 @@ test_that("as.data.frame.stance_result ignores additional arguments gracefully",
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return The input object (invisibly).
+#' @name methods
 #' @export
 
 inspect <- function(x, ...) {
@@ -6220,6 +6500,29 @@ test_that("inspect.stance_result: error handling (out of bounds and missing sect
 
   # 3. Invalid index type
   expect_error(inspect(mock_res, index = 0), "must be a whole number")
+  
+  # 4. Empty
+  mock_res_empty <- mock_res
+  mock_res_empty$analysis$linguistic[1] <- NA_character_
+  expect_output(
+    inspect(mock_res_empty, "analysis", "linguistic", 1),
+    "(empty)",
+    fixed = TRUE
+  )
+  mock_res_empty <- mock_res
+  mock_res_empty$debates$negative[2] <- NA_character_
+  expect_output(
+    inspect(mock_res_empty, "debates", "negative", 2),
+    "(empty)",
+    fixed = TRUE
+  )
+  mock_res_empty <- mock_res
+  mock_res_empty$summary$explanation[1] <- NA_character_
+  expect_output(
+    inspect(mock_res_empty, "explanation", index = 1),
+    "(empty)",
+    fixed = TRUE
+  )
 })
 ```
 
