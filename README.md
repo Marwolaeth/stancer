@@ -4,9 +4,12 @@
 # stancer <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
+
 [![R-CMD-check](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Marwolaeth/stancer/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
 coverage](https://codecov.io/gh/Marwolaeth/stancer/graph/badge.svg)](https://app.codecov.io/gh/Marwolaeth/stancer)
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
 Stance Analysis using Ensemble of LLM Agents through `ellmer`
