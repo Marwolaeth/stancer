@@ -6545,6 +6545,6 @@ fusen::inflate(
 
 ```{r development-document, eval = FALSE}
 # usethis::use_logo('../hex-stancer.png')
-usethis::use_lifecycle_badge('Experimental')
+# usethis::use_lifecycle_badge('Experimental')
 devtools::build_readme(output_options = list(self_contained = TRUE))
 ```

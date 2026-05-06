@@ -2,7 +2,6 @@
 output: github_document
 bibliography: dev/references.bib
 link-citations: true
-self-contained: true
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
