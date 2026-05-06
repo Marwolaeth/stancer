@@ -128,7 +128,7 @@ inspect.stance_result <- function(
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
-          cat(ellmer::interpolate(content))
+          cat(ellmer::interpolate(content), fill = TRUE)
           cat("\n")
         }
       }
@@ -185,7 +185,7 @@ inspect.stance_result <- function(
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
-          cat(ellmer::interpolate(content))
+          cat(ellmer::interpolate(content), fill = TRUE)
           cat("\n")
         }
       }
@@ -224,7 +224,7 @@ inspect.stance_result <- function(
       if (is.na(content) || is.null(content)) {
         cat(cli::col_yellow("(empty)\n\n"))
       } else {
-        cat(ellmer::interpolate(content))
+        cat(ellmer::interpolate(content), fill = TRUE)
         cat("\n")
       }
     }

@@ -6236,7 +6236,7 @@ inspect.stance_result <- function(
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
-          cat(ellmer::interpolate(content))
+          cat(ellmer::interpolate(content), fill = TRUE)
           cat("\n")
         }
       }
@@ -6293,7 +6293,7 @@ inspect.stance_result <- function(
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
-          cat(ellmer::interpolate(content))
+          cat(ellmer::interpolate(content), fill = TRUE)
           cat("\n")
         }
       }
@@ -6332,7 +6332,7 @@ inspect.stance_result <- function(
       if (is.na(content) || is.null(content)) {
         cat(cli::col_yellow("(empty)\n\n"))
       } else {
-        cat(ellmer::interpolate(content))
+        cat(ellmer::interpolate(content), fill = TRUE)
         cat("\n")
       }
     }
@@ -6546,5 +6546,6 @@ fusen::inflate(
 ```{r development-document, eval = FALSE}
 # usethis::use_logo('../hex-stancer.png')
 # usethis::use_lifecycle_badge('Experimental')
-devtools::build_readme(output_options = list(self_contained = TRUE))
+# devtools::build_rmd(files = "README.qmd")
+quarto::quarto_render()
 ```
