@@ -178,7 +178,7 @@
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result_likert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/llm_stance.html">llm_stance</a></span><span class="op">(</span></span>
 <span>    <span class="va">text</span>,</span>
-<span>    <span class="va">target</span>,</span>
+<span>    target <span class="op">=</span> <span class="st">"Plastic ban"</span>,</span>
 <span>    type <span class="op">=</span> <span class="st">"object"</span>,</span>
 <span>    chat_base <span class="op">=</span> <span class="va">chat</span>,</span>
 <span>    domain_role <span class="op">=</span> <span class="st">"social commentator"</span>,</span>
@@ -197,14 +197,7 @@
 <div class="sourceCode" id="cb7"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co">#&gt;  ── EXPLANATION: [row 1] ──────────────────────────────────────────────────────── </span></span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; The author expresses strong disgust at the rejection of the plastic</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>ban proposal, indicating they view the ban as desirable. Explicit</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>evaluation of the ban is absent, but the emotional <span class="fu">tone</span> (intensifier</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="st">'absolutely'</span> <span class="sc">+</span> <span class="st">'disgusted'</span>) directed at the rejection signals a clear,</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>intense positive stance toward the ban itself. Implicitly, the</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>presupposition that the ban should have been accepted reinforces this</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>support. Hence the majority of textual elements align with Strongly</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>Agree.</span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; The author expresses strong disgust at the rejection of the plastic ban proposal, indicating they view the ban as desirable. Explicit evaluation of the ban is absent, but the emotional tone (intensifier 'absolutely' + 'disgusted') directed at the rejection signals a clear, intense positive stance toward the ban itself. Implicitly, the presupposition that the ban should have been accepted reinforces this support. Hence the majority of textual elements align with Strongly Agree.</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="data-frame-integration-mall-style">Data frame integration (mall-style)<a class="anchor" aria-label="anchor" href="#data-frame-integration-mall-style"></a>
