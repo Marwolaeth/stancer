@@ -15,8 +15,8 @@ Stance Analysis using Ensemble of LLM Agents through `ellmer`
 ## Overview
 
 **stancer** provides tools for automated stance analysis in R. It uses
-an ensemble of Large Language Models (LLM) from user-provided `ellmer`
-Wickham et al. ([2025](#ref-ellmer2025)) `Chat` objects to determine
+an ensemble of Large Language Models (LLM) from user-provided `ellmer` —
+Wickham et al. ([2025](#ref-ellmer2025)) — `Chat` objects to determine
 whether a text is in favour of, against, or neutral towards a specific
 target.
 
@@ -296,10 +296,9 @@ social science and state-of-the-art NLP:
 
 2.  [mall](https://mlverse.github.io/mall/) by Ruiz
     ([2026](#ref-mall2026)): One of the pioneers in the “tidy LLM”
-    workflow, `mall` allows you to run language model tasks—like
-    sentiment analysis or summarisation—directly on data frames. It is
-    highly efficient for batch processing and served as a key
-    inspiration for the interface of `stancer`.
+    workflow, `mall` allows to run language model tasks—like sentiment
+    analysis or summarisation—directly on data frames. It served as a
+    key inspiration for the interface of `stancer`.
 
 3.  [manifestoR](https://manifesto-project.wzb.eu/manifestor) &
     [manifestoberta](https://manifesto-project.wzb.eu/information/documents/manifestoberta):
@@ -346,8 +345,8 @@ Analysis.” *Political Analysis* 31 (2): 235–56.
 
 Burst, Pola AND Franzmann, Tobias AND Lehmann. 2024. “Manifestoberta.
 Version 56topics.sentence.2024.1.1.” Berlin / Göttingen:
-Wissenschaftszentrum Berlin fГјr Sozialforschung / GГ¶ttinger Institut
-fГјr Demokratieforschung.
+Wissenschaftszentrum Berlin für Sozialforschung / Göttinger Institut für
+Demokratieforschung.
 <https://doi.org/10.25522/manifesto.manifestoberta.56topics.sentence.2024.1.1>.
 
 </div>

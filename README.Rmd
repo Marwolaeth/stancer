@@ -30,7 +30,7 @@ Stance Analysis using Ensemble of LLM Agents through `ellmer`
 
 ## Overview
 
-**stancer** provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) from user-provided `ellmer` @ellmer2025 `Chat` objects to determine whether a text is in favour of, against, or neutral towards a specific target.
+**stancer** provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) from user-provided `ellmer` — @ellmer2025 — `Chat` objects to determine whether a text is in favour of, against, or neutral towards a specific target.
 
 The package is built upon the **COLA** (Collaborative rOle-infused LLM-based Agents) framework proposed by @lan2024stancedetectioncollaborativeroleinfused. Instead of a single prompt, `stancer` coordinates a team of LLM agents—linguists, domain experts, and social media specialists—who analyse the text and debate its meaning before reaching a final judgement.
 
@@ -229,7 +229,7 @@ For researchers working with text-as-data and political discourse, we recommend 
 
 1. [text](https://r-text.org/) by @text2023: This package provides a seamless interface to HuggingFace’s vast library of Transformer models directly from R. While it requires an initial Python setup, it abstracts the complexity away, allowing you to use advanced word embeddings and language models without ever leaving your R console.
 
-2. [mall](https://mlverse.github.io/mall/) by @mall2026: One of the pioneers in the "tidy LLM" workflow, `mall` allows you to run language model tasks—like sentiment analysis or summarisation—directly on data frames. It is highly efficient for batch processing and served as a key inspiration for the interface of `stancer`.
+2. [mall](https://mlverse.github.io/mall/) by @mall2026: One of the pioneers in the "tidy LLM" workflow, `mall` allows to run language model tasks—like sentiment analysis or summarisation—directly on data frames. It served as a key inspiration for the interface of `stancer`.
 
 3. [manifestoR](https://manifesto-project.wzb.eu/manifestor) & [manifestoberta](https://manifesto-project.wzb.eu/information/documents/manifestoberta): Developed by the [Manifesto Project](https://manifesto-project.wzb.eu/), `manifestoR` by @manifestoR2026 provides programmatic access to over a million hand-annotated political statements. For automated classification, the **manifestoberta** by @Burst2024 models (available via HuggingFace and usable through the `text` package) offer specialized performance for categorising political discourse across dozens of languages.
 
