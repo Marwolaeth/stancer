@@ -55,9 +55,6 @@
     </li>
   </ul>
 </li>
-<li>
-  <a href="news/index.html">Changelog</a>
-</li>
       </ul>
 <ul class="nav navbar-nav navbar-right"></ul>
 </div>
@@ -80,8 +77,11 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><strong>stancer</strong> provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) to determine whether a text is in favour of, against, or neutral towards a specific target.</p>
+<p><strong>stancer</strong> provides tools for automated stance analysis in R. It uses an ensemble of Large Language Models (LLM) from user-provided <code>ellmer</code> Wickham et al. (<a href="#ref-ellmer2025">2025</a>) <code>Chat</code> objects to determine whether a text is in favour of, against, or neutral towards a specific target.</p>
 <p>The package is built upon the <strong>COLA</strong> (Collaborative rOle-infused LLM-based Agents) framework proposed by Lan et al. (<a href="#ref-lan2024stancedetectioncollaborativeroleinfused">2024</a>). Instead of a single prompt, <code>stancer</code> coordinates a team of LLM agents—linguists, domain experts, and social media specialists—who analyse the text and debate its meaning before reaching a final judgement.</p>
+<div class="callout-note">
+<p>The COLA framework design (described below) requires several LLM API calls. Specifically, it makes <em>seven separate calls for each document</em> processed.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -92,16 +92,32 @@
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"Marwolaeth/stancer"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="stance-analysis">Stance Analysis<a class="anchor" aria-label="anchor" href="#stance-analysis"></a>
+</h2>
+<p>In the era of “text-as-data”, researchers in media analytics and sociology face the challenge of extracting structured meaning from vast amounts of unstructured text. Traditional content analysis, as established by Klaus Krippendorff (<a href="#ref-krippendorff2004content">2004</a>), emphasizes that communication is not just about frequencies but about inferences — how text relates to its context and the intentions of its author. While practitioners often aim for the “interpretive” depth described by Ahuvia (<a href="#ref-Ahuvia2001">2001</a>), manual coding at scale is frequently impossible.</p>
+<p>A common pitfall in automated research is treating <strong>Sentiment Analysis</strong> and <strong>Stance Analysis</strong> as interchangeable. However, as noted by Bestvater and Monroe (<a href="#ref-BestvaterMonroe2023">2023</a>), they are conceptually distinct:</p>
+<blockquote>
+<p>Sentiment analysis techniques have a long history in natural language processing and have become a standard tool in the analysis of political texts, promising a conceptually straightforward automated method of extracting meaning from textual data by scoring documents on a scale from positive to negative. However, while these kinds of sentiment scores can capture the overall tone of a document, the underlying concept of interest for political analysis is often actually the document’s stance with respect to a given target—how positively or negatively it frames a specific idea, individual, or group—as this reflects the author’s underlying political attitudes.</p>
+</blockquote>
+<p>In political discourse and social media monitoring, sentiment and stance are often orthogonal and sometimes opposite. For example:</p>
+<blockquote>
+<p>“I am absolutely disgusted that the plastic ban proposal was rejected.”</p>
+</blockquote>
+<p><strong>Sentiment:</strong> Negative (the author is <em>disgusted</em>; also, for more conservative methods, it may also matter that the <em>ban</em> proposal was <em>rejected</em>).</p>
+<p><strong>Stance (Target: Plastic Ban):</strong> <strong>Positive</strong> (the author supports the ban).</p>
+<p>Standard sentiment lexicons would likely misclassify this as “Anti” due to the negative tone. <code>stancer</code> addresses this by using the <strong>COLA framework</strong> (Collaborative rOle-infused LLM-based Agents), which mimics the deliberation of human coders to capture the “interpretive” nuances of stance detection.</p>
+</div>
+<div class="section level2">
 <h2 id="how-it-works-the-cola-framework">How it works: The COLA Framework<a class="anchor" aria-label="anchor" href="#how-it-works-the-cola-framework"></a>
 </h2>
 <p>Following the approach by Lan et al. (<a href="#ref-lan2024stancedetectioncollaborativeroleinfused">2024</a>), <code>stancer</code> breaks down stance detection into three distinct stages:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Multidimensional Analysis</strong>: Three specialised agents (Linguistic, Domain, and Social) analyse the text’s style, terminology, and context.</li>
+<strong>Multidimensional Analysis</strong>: Three specialised agents (linguist, domain expert, and social media veteran) analyse the text’s meaning, style, terminology, and context.</li>
 <li>
-<strong>Reasoning-Enhanced Debate</strong>: For each possible stance (Positive/Neutral/Negative), an agent is assigned to argue why the text might fit that category. This helps uncover implicit viewpoints that a simple analysis might miss.</li>
+<strong>Reasoning-Enhanced Debate</strong>: For each possible stance polarity (Positive/Neutral/Negative), an agent is assigned to argue why the text might fit that category, based on analyses results from step 1. This helps uncover implicit viewpoints that a simple analysis might miss.</li>
 <li>
-<strong>Stance Conclusion</strong>: A final decision-maker reviews the analyses and the debate to provide a reasoned judgement and a final score.</li>
+<strong>Stance Conclusion</strong>: A final decision-maker agent reviews the analyses and the debate to provide a reasoned judgement and a final (structured) score.</li>
 </ol>
 </div>
 <div class="section level2">
@@ -116,7 +132,7 @@
 <li>
 <strong>Russian</strong> (<code>"ru"</code>)</li>
 </ul>
-<p>The package automatically detects the language of your text (using <code>cld2</code> if available) or allows you to specify it manually in <code><a href="reference/llm_stance.html">llm_stance()</a></code>.</p>
+<p>The package automatically detects the language of your text (using <code>cld2</code> if available) or allows you to specify it manually in <code><a href="reference/llm_stance.html">llm_stance()</a></code>. Currently, only the three languages listed above are available.</p>
 </div>
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
@@ -132,8 +148,8 @@
 <span><span class="co"># Set up your LLM client</span></span>
 <span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_anthropic.html" class="external-link">chat_anthropic</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">text</span> <span class="op">&lt;-</span> <span class="st">"The carbon tax is just another way for the government to control our lives and stifle economic growth."</span></span>
-<span><span class="va">target</span> <span class="op">&lt;-</span> <span class="st">"Climate Change mitigation policies"</span></span>
+<span><span class="va">text</span> <span class="op">&lt;-</span> <span class="st">"I am absolutely disgusted that the plastic ban proposal was rejected."</span></span>
+<span><span class="va">target</span> <span class="op">&lt;-</span> <span class="st">"Plastic ban"</span></span>
 <span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/llm_stance.html">llm_stance</a></span><span class="op">(</span></span>
 <span>  <span class="va">text</span>,</span>
@@ -146,14 +162,55 @@
 <span></span>
 <span><span class="co"># View the summary</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/inspect.html">inspect</a></span><span class="op">(</span><span class="va">result</span>, <span class="st">"analysis"</span>, <span class="st">"linguistic"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/inspect.stance_result.html">inspect</a></span><span class="op">(</span><span class="va">result</span>, <span class="st">"analysis"</span>, <span class="st">"linguistic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 6</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#&gt;   text                            target target_type language stance explanation</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;                           &lt;chr&gt;  &lt;chr&gt;       &lt;chr&gt;    &lt;fct&gt;  &lt;chr&gt;      </span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#&gt; 1 I am absolutely disgusted that… Plast… object      en       Posit… The explic…</span></span></code></pre></div>
+<p>Besides the traditional three-way scale (Negative/Neutral/Positive): <code>scale = "categorical"</code>, two scale options are available:</p>
+<ul>
+<li>
+<code>likert</code> returns Likert scale ordinal factor response (Strongly Disagree … Strongly Agree)</li>
+<li>
+<code>numeric</code> returns numerical stance values. Warning: these values typically range from -1 to 1, but there is no guarantee of the value range. Therefore, <code>scale = "numeric"</code> is currently not recommended, especially for smaller models.</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result_likert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/llm_stance.html">llm_stance</a></span><span class="op">(</span></span>
+<span>    <span class="va">text</span>,</span>
+<span>    <span class="va">target</span>,</span>
+<span>    type <span class="op">=</span> <span class="st">"object"</span>,</span>
+<span>    chat_base <span class="op">=</span> <span class="va">chat</span>,</span>
+<span>    domain_role <span class="op">=</span> <span class="st">"social commentator"</span>,</span>
+<span>    language <span class="op">=</span> <span class="st">"en"</span>,</span>
+<span>    scale <span class="op">=</span> <span class="st">"likert"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">result_likert</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"target"</span>, <span class="st">"stance"</span>, <span class="st">"explanation"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 3</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co">#&gt;   target      stance         explanation                                        </span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;       &lt;ord&gt;          &lt;chr&gt;                                              </span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; 1 Plastic ban Strongly Agree The author expresses strong disgust at the rejecti…</span></span></code></pre></div>
+<p>The <code>inspect</code> method provides a deeper look at the analysis results, including intermediate steps and detailed outputs generated during processing. See <code><a href="reference/inspect.stance_result.html">?inspect</a></code> for details and available arguments.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/inspect.stance_result.html">inspect</a></span><span class="op">(</span><span class="va">result_likert</span>, <span class="st">"explanation"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co">#&gt;  ── EXPLANATION: [row 1] ──────────────────────────────────────────────────────── </span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; The author expresses strong disgust at the rejection of the plastic</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>ban proposal, indicating they view the ban as desirable. Explicit</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>evaluation of the ban is absent, but the emotional <span class="fu">tone</span> (intensifier</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="st">'absolutely'</span> <span class="sc">+</span> <span class="st">'disgusted'</span>) directed at the rejection signals a clear,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>intense positive stance toward the ban itself. Implicitly, the</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>presupposition that the ban should have been accepted reinforces this</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>support. Hence the majority of textual elements align with Strongly</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>Agree.</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="data-frame-integration-mall-style">Data frame integration (mall-style)<a class="anchor" aria-label="anchor" href="#data-frame-integration-mall-style"></a>
 </h3>
-<p>Inspired by the <a href="https://mlverse.github.io/mall/" class="external-link">mall</a> package, <code>stancer</code> provides a seamless way to process entire datasets. It handles the row-wise operations and returns a tidy data frame with the results.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>Inspired by the <code>mall</code> package by Ruiz (<a href="#ref-mall2026">2026</a>) from <a href="https://github.com/mlverse" class="external-link">mlverse</a>, <code>stancer</code> provides a seamless way to process entire datasets. It handles the row-wise operations and returns a tidy data frame with the results.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">stancer</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
@@ -177,17 +234,17 @@
 <span></span>
 <span><span class="co"># The result is a tibble with a new .stance column</span></span>
 <span><span class="fu">glimpse</span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="do">## Rows: 3</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="do">## Columns: 2</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="do">## $ tweet   &lt;chr&gt; "Julia's SciML ecosystem is absolutely phenomenal for solving complex differential equations. The performance and expressiveness combined i…</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="do">## $ .stance &lt;fct&gt; Positive, Positive, Positive</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co">#&gt; Rows: 3</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#&gt; Columns: 2</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#&gt; $ tweet   &lt;chr&gt; "Julia's SciML ecosystem is absolutely phenomenal for solving complex differential equations. The performance and expressiveness combined i…</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt; $ .stance &lt;fct&gt; Positive, Positive, Positive</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="customizing-prompts">Customizing Prompts<a class="anchor" aria-label="anchor" href="#customizing-prompts"></a>
 </h3>
 <p>If you need to adapt the agents’ behaviour, support a new language, or you find that the original prompts are too verbose and slow, you can provide your own instructions. By using the <code>prompts_dir</code> argument, you can point the package to a local folder containing custom <code>.md</code> files.</p>
 <p><code>stancer</code> will look for specific files (e.g., <code>user-linguist.md</code>, <code>system-judger.md</code>, <code>description-likert.md</code>) in that directory. If a file is missing, the package will gracefully fall back to its internal defaults with respect to the <code>language</code> argument (<code>"en"</code> by default). This allows you to override the system partially or entirely.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Use custom instructions from a local folder</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/llm_stance.html">llm_stance</a></span><span class="op">(</span></span>
 <span>  <span class="va">text</span>,</span>
@@ -218,8 +275,23 @@
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
+<div id="ref-Ahuvia2001" class="csl-entry">
+Ahuvia, Aaron. 2001. “Traditional, Interpretive, and Reception Based Content Analyses: Improving the Ability of Content Analysis to Address Issues of Pragmatic and Theoretical Concern.” <em>Soc Indic Res</em> 54 (May). <a href="https://doi.org/10.1023/A:1011087813505" class="external-link uri">https://doi.org/10.1023/A:1011087813505</a>.
+</div>
+<div id="ref-BestvaterMonroe2023" class="csl-entry">
+Bestvater, Samuel E., and Burt L. Monroe. 2023. “Sentiment Is Not Stance: Target-Aware Opinion Classification for Political Text Analysis.” <em>Political Analysis</em> 31 (2): 235–56. <a href="https://doi.org/10.1017/pan.2022.10" class="external-link uri">https://doi.org/10.1017/pan.2022.10</a>.
+</div>
+<div id="ref-krippendorff2004content" class="csl-entry">
+Krippendorff, K. 2004. <em>Content Analysis: An Introduction to Its Methodology</em>. Sage. <a href="https://books.google.pl/books?id=jYdAAQAAIAAJ" class="external-link uri">https://books.google.pl/books?id=jYdAAQAAIAAJ</a>.
+</div>
 <div id="ref-lan2024stancedetectioncollaborativeroleinfused" class="csl-entry">
 Lan, Xiaochong, Chen Gao, Depeng Jin, and Yong Li. 2024. “Stance Detection with Collaborative Role-Infused LLM-Based Agents.” <a href="https://arxiv.org/abs/2310.10467" class="external-link uri">https://arxiv.org/abs/2310.10467</a>.
+</div>
+<div id="ref-mall2026" class="csl-entry">
+Ruiz, Edgar. 2026. <em>Mall: Run Multiple Large Language Model Predictions Against a Table, or Vectors</em>. <a href="https://mlverse.github.io/mall/" class="external-link uri">https://mlverse.github.io/mall/</a>.
+</div>
+<div id="ref-ellmer2025" class="csl-entry">
+Wickham, Hadley, Joe Cheng, Aaron Jacobs, Garrick Aden-Buie, and Barret Schloerke. 2025. <em>Ellmer: Chat with Large Language Models</em>. <a href="https://ellmer.tidyverse.org" class="external-link uri">https://ellmer.tidyverse.org</a>.
 </div>
 </div>
 </div>
