@@ -6,3 +6,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^stancer\.Rproj$
+\.qmd
+\_files
+^README\.html$

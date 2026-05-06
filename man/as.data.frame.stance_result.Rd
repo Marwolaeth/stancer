@@ -16,7 +16,7 @@
 \item{...}{Additional arguments passed to \code{\link[base:as.data.frame]{base::as.data.frame()}}.}
 }
 \value{
-Data frame
+A Data frame
 }
 \description{
 Extracts the summary table from a \code{stance_result} object and returns it as

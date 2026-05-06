@@ -10,7 +10,7 @@
 #' @param optional Logical. If TRUE, setting row names and converting column names to syntactic names is optional.
 #' @param ... Additional arguments passed to [base::as.data.frame()].
 #'
-#' @return Data frame
+#' @return A Data frame
 #'
 #' @export
 
@@ -23,7 +23,7 @@ as.data.frame.stance_result <- function(
   x$summary
 }
 
-#' Inspect stance_result contents
+#' Inspect method for `stance_result` objects
 #'
 #' @param x A `stance_result` object.
 #' @param ... Additional arguments passed to methods.
@@ -31,24 +31,23 @@ as.data.frame.stance_result <- function(
 #' @return The input object (invisibly).
 #'
 #' @export
+#' @rdname inspect.stance_result
 
 inspect <- function(x, ...) {
   UseMethod("inspect")
 }
 
-#' @rdname inspect
 #' Inspect stance_result contents
 #'
 #' @description
 #' A diagnostic tool to peer into the internal steps of the stance analysis.
-#' It allows you to view metadata, raw linguistic/expert analysis,
-#' internal debates between models, or the final explanation for a specific row.
+#' It allows to view metadata, raw linguistic/expert/veteran analysis,
+#' internal debates between agents, or the final explanation for a specific row.
 #'
 #' @param what Character. Primary level: 'metadata', 'analysis', 'debates', or 'explanation'.
-#' @param within Optional character. Secondary level (e.g., 'linguistic' for analysis).
+#' @param within Optional character. Secondary level (e.g., 'linguistic' for analysis, 'positive' for debates).
 #' @param index Integer. The row index of the text item to inspect.
 #'
-#' @return The input object (invisibly).
 #'
 #' @export
 #' @examples
