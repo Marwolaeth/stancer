@@ -178,7 +178,7 @@ Besides the traditional three-way scale (Negative/Neutral/Positive):
 ``` r
 result_likert <- llm_stance(
     text,
-    target,
+    target = "Plastic ban",
     type = "object",
     chat_base = chat,
     domain_role = "social commentator",
@@ -205,14 +205,7 @@ inspect(result_likert, "explanation")
     #> 
     #>  ── EXPLANATION: [row 1] ──────────────────────────────────────────────────────── 
     #> 
-    #> The author expresses strong disgust at the rejection of the plastic
-    ban proposal, indicating they view the ban as desirable. Explicit
-    evaluation of the ban is absent, but the emotional tone (intensifier
-    'absolutely' + 'disgusted') directed at the rejection signals a clear,
-    intense positive stance toward the ban itself. Implicitly, the
-    presupposition that the ban should have been accepted reinforces this
-    support. Hence the majority of textual elements align with Strongly
-    Agree.
+    #> The author expresses strong disgust at the rejection of the plastic ban proposal, indicating they view the ban as desirable. Explicit evaluation of the ban is absent, but the emotional tone (intensifier 'absolutely' + 'disgusted') directed at the rejection signals a clear, intense positive stance toward the ban itself. Implicitly, the presupposition that the ban should have been accepted reinforces this support. Hence the majority of textual elements align with Strongly Agree.
 
 ### Data frame integration (mall-style)
 
