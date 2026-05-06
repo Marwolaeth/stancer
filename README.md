@@ -75,6 +75,12 @@ conceptually distinct:
 > positively or negatively it frames a specific idea, individual, or
 > group—as this reflects the author’s underlying political attitudes.
 
+For a comprehensive exploration of the concept, its linguistic origins,
+and its applications, we highly recommend the foundational study by
+Bestvater and Monroe ([2023](#ref-BestvaterMonroe2023)), “Sentiment is
+Not Stance: Target-Aware Opinion Classification for Political Text
+Analysis”.
+
 In political discourse and social media monitoring, sentiment and stance
 are often orthogonal and sometimes opposite. For example:
 
@@ -275,6 +281,37 @@ result <- llm_stance(
 - [ellmer](https://ellmer.tidyverse.org/) for LLM integration.
 - API access to your chosen LLM provider.
 
+## Related Tools
+
+For researchers working with text-as-data and political discourse, we
+recommend these complementary R packages that bridge the gap between
+social science and state-of-the-art NLP:
+
+1.  [text](https://r-text.org/) by Kjell, Giorgi, and Schwartz
+    ([2023](#ref-text2023)): This package provides a seamless interface
+    to HuggingFace’s vast library of Transformer models directly from R.
+    While it requires an initial Python setup, it abstracts the
+    complexity away, allowing you to use advanced word embeddings and
+    language models without ever leaving your R console.
+
+2.  [mall](https://mlverse.github.io/mall/) by Ruiz
+    ([2026](#ref-mall2026)): One of the pioneers in the “tidy LLM”
+    workflow, `mall` allows you to run language model tasks—like
+    sentiment analysis or summarisation—directly on data frames. It is
+    highly efficient for batch processing and served as a key
+    inspiration for the interface of `stancer`.
+
+3.  [manifestoR](https://manifesto-project.wzb.eu/manifestor) &
+    [manifestoberta](https://manifesto-project.wzb.eu/information/documents/manifestoberta):
+    Developed by the [Manifesto
+    Project](https://manifesto-project.wzb.eu/), `manifestoR` by
+    Lewandowski, Merz, and Regel ([2026](#ref-manifestoR2026)) provides
+    programmatic access to over a million hand-annotated political
+    statements. For automated classification, the **manifestoberta** by
+    Burst ([2024](#ref-Burst2024)) models (available via HuggingFace and
+    usable through the `text` package) offer specialized performance for
+    categorising political discourse across dozens of languages.
+
 ## Citation & Attribution
 
 This implementation is based on the COLA framework from Lan et al.
@@ -305,6 +342,25 @@ Analysis.” *Political Analysis* 31 (2): 235–56.
 
 </div>
 
+<div id="ref-Burst2024" class="csl-entry">
+
+Burst, Pola AND Franzmann, Tobias AND Lehmann. 2024. “Manifestoberta.
+Version 56topics.sentence.2024.1.1.” Berlin / Göttingen:
+Wissenschaftszentrum Berlin fГјr Sozialforschung / GГ¶ttinger Institut
+fГјr Demokratieforschung.
+<https://doi.org/10.25522/manifesto.manifestoberta.56topics.sentence.2024.1.1>.
+
+</div>
+
+<div id="ref-text2023" class="csl-entry">
+
+Kjell, Oscar, Salvatore Giorgi, and H. Andrew Schwartz. 2023. “The
+Text-Package: An r-Package for Analyzing and Visualizing Human Language
+Using Natural Language Processing and Deep Learning.” *Psychological
+Methods*. <https://doi.org/10.1037/met0000542>.
+
+</div>
+
 <div id="ref-krippendorff2004content" class="csl-entry">
 
 Krippendorff, K. 2004. *Content Analysis: An Introduction to Its
@@ -318,6 +374,14 @@ class="csl-entry">
 Lan, Xiaochong, Chen Gao, Depeng Jin, and Yong Li. 2024. “Stance
 Detection with Collaborative Role-Infused LLM-Based Agents.”
 <https://arxiv.org/abs/2310.10467>.
+
+</div>
+
+<div id="ref-manifestoR2026" class="csl-entry">
+
+Lewandowski, Jirka, Nicolas Merz, and Sven Regel. 2026. *manifestoR:
+Access and Process Data and Documents of the Manifesto Project*.
+<https://doi.org/10.32614/CRAN.package.manifestoR>.
 
 </div>
 

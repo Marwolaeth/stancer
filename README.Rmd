@@ -55,6 +55,8 @@ A common pitfall in automated research is treating **Sentiment Analysis** and **
 
 > Sentiment analysis techniques have a long history in natural language processing and have become a standard tool in the analysis of political texts, promising a conceptually straightforward automated method of extracting meaning from textual data by scoring documents on a scale from positive to negative. However, while these kinds of sentiment scores can capture the overall tone of a document, the underlying concept of interest for political analysis is often actually the document’s stance with respect to a given target—how positively or negatively it frames a specific idea, individual, or group—as this reflects the author’s underlying political attitudes.
 
+For a comprehensive exploration of the concept, its linguistic origins, and its applications, we highly recommend the foundational study by @BestvaterMonroe2023, "Sentiment is Not Stance: Target-Aware Opinion Classification for Political Text Analysis".
+
 In political discourse and social media monitoring, sentiment and stance are often orthogonal and sometimes opposite. For example:
 
 > "I am absolutely disgusted that the plastic ban proposal was rejected."
@@ -220,6 +222,16 @@ result <- llm_stance(
 - R >= 4.1.0
 - [ellmer](https://ellmer.tidyverse.org/) for LLM integration.
 - API access to your chosen LLM provider.
+
+## Related Tools
+
+For researchers working with text-as-data and political discourse, we recommend these complementary R packages that bridge the gap between social science and state-of-the-art NLP:
+
+1. [text](https://r-text.org/) by @text2023: This package provides a seamless interface to HuggingFace’s vast library of Transformer models directly from R. While it requires an initial Python setup, it abstracts the complexity away, allowing you to use advanced word embeddings and language models without ever leaving your R console.
+
+2. [mall](https://mlverse.github.io/mall/) by @mall2026: One of the pioneers in the "tidy LLM" workflow, `mall` allows you to run language model tasks—like sentiment analysis or summarisation—directly on data frames. It is highly efficient for batch processing and served as a key inspiration for the interface of `stancer`.
+
+3. [manifestoR](https://manifesto-project.wzb.eu/manifestor) & [manifestoberta](https://manifesto-project.wzb.eu/information/documents/manifestoberta): Developed by the [Manifesto Project](https://manifesto-project.wzb.eu/), `manifestoR` by @manifestoR2026 provides programmatic access to over a million hand-annotated political statements. For automated classification, the **manifestoberta** by @Burst2024 models (available via HuggingFace and usable through the `text` package) offer specialized performance for categorising political discourse across dozens of languages.
 
 ## Citation & Attribution
 
