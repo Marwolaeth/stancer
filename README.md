@@ -75,11 +75,10 @@ conceptually distinct:
 > positively or negatively it frames a specific idea, individual, or
 > group—as this reflects the author’s underlying political attitudes.
 
-For a comprehensive exploration of the concept, its linguistic origins,
-and its applications, we highly recommend the foundational study by
-Bestvater and Monroe ([2023](#ref-BestvaterMonroe2023)), “Sentiment is
-Not Stance: Target-Aware Opinion Classification for Political Text
-Analysis”.
+For a comprehensive exploration of the concept for those more familiar
+with sentiment analysis, we highly recommend the study by Bestvater and
+Monroe ([2023](#ref-BestvaterMonroe2023)), “Sentiment is Not Stance:
+Target-Aware Opinion Classification for Political Text Analysis”.
 
 In political discourse and social media monitoring, sentiment and stance
 are often orthogonal and sometimes opposite. For example:
