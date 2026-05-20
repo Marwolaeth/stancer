@@ -1,4 +1,4 @@
-Determine the author's position towards the {{target_type}} "{{target}}".
+Determine the author's position towards the {{target_type}} "{{target}}", either explicit or implicit.
 
 Publication: "{{text}}"
 
