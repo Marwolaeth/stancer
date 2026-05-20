@@ -23,10 +23,10 @@ flat_stancer.Rmd:
   - tests/testthat/test-stages.R
   - tests/testthat/test-llm_stance.R
   - tests/testthat/test-methods.R
-  vignettes: vignettes/get-started.Rmd
+  vignettes: vignettes/stance-analysis-with-ellmer.Rmd
   inflate:
     flat_file: dev/flat_stancer.Rmd
-    vignette_name: Get started
+    vignette_name: Stance Analysis with ellmer
     open_vignette: false
     check: true
     document: true

@@ -1,7 +1,6 @@
 ---
 title: 'stancer: Stance Analysis using Ensemble of LLM Agents through `ellmer`'
 output: html_document
-bibliography: references.bib
 editor_options:
 chunk_output_type: console
 ---
@@ -6537,7 +6536,7 @@ fusen::inflate(
   flat_file = here::here('dev', 'flat_stancer.Rmd'),
   codecov = TRUE,
   clean = TRUE,
-  vignette_name = "Get started",
+  vignette_name = "Stance Analysis with ellmer",
   open_vignette = FALSE
 )
 ```
