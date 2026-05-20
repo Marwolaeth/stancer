@@ -113,7 +113,7 @@ its meaning before reaching a final judgement.</p>
 <span>  <span class="va">text</span>,</span>
 <span>  <span class="va">target</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"object"</span>, <span class="co"># stance towards a given object or entity</span></span>
-<span>  <span class="co"># type = "statement", # whether a text agrees with a certain statement</span></span>
+<span>  <span class="co"># type = "claim", # whether a text agrees with a certain proposition (claim), statement, or narrative</span></span>
 <span>  chat_base <span class="op">=</span> <span class="va">chat</span>,</span>
 <span>  domain_role <span class="op">=</span> <span class="st">"economic analyst"</span></span>
 <span><span class="op">)</span></span>
@@ -253,7 +253,7 @@ its meaning before reaching a final judgement.</p>
 <span><span class="co">#   `system-judger` = "prompts/en/system-judger.md",</span></span>
 <span><span class="co">#   `user-judger` = "prompts/en/user-judger.md",</span></span>
 <span><span class="co">#   reference_resolution = "prompts/en/reference-resolution.md",</span></span>
-<span><span class="co">#   statement_resolution = "prompts/en/statement-resolution.md",</span></span>
+<span><span class="co">#   claim_resolution = "prompts/en/claim-resolution.md",</span></span>
 <span><span class="co">#   scale_guide = "prompts/en/guide-likert.md"</span></span>
 <span><span class="co"># )</span></span>
 <span><span class="co"># </span></span>
@@ -262,11 +262,11 @@ its meaning before reaching a final judgement.</p>
 <span><span class="co">#   templates = templates,</span></span>
 <span><span class="co">#   language = "en",</span></span>
 <span><span class="co">#   add_reference_resolution = TRUE,</span></span>
-<span><span class="co">#   add_statement_resolution = TRUE,</span></span>
+<span><span class="co">#   add_claim_resolution = TRUE,</span></span>
 <span><span class="co">#   target = "Climate change is a real concern",</span></span>
 <span><span class="co">#   text = "Global warming is a serious threat",</span></span>
-<span><span class="co">#   target_type = "the statement",</span></span>
-<span><span class="co">#   FavourResponse = "This text is almost a paraphrase of the target statement",</span></span>
+<span><span class="co">#   target_type = "the claim",</span></span>
+<span><span class="co">#   FavourResponse = "This text is almost a paraphrase of the target claim",</span></span>
 <span><span class="co">#   AgainstResponse = "This is most probably a parody of climate speeches.",</span></span>
 <span><span class="co">#   NeutralResponse = "Context is missing and we should be sceptical"</span></span>
 <span><span class="co"># )</span></span></code></pre></div>
