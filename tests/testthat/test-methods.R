@@ -163,7 +163,7 @@ test_that("print.stance_result handles multiple models and roles", {
         n_processed = 2,
         n_failed = 0,
         language = "ru",
-        types = c("object", "statement"),
+        types = c("object", "claim"),
         domain_role = c("социолог", "лингвист"),
         model = c("claude-3", "gpt-4o"),
         elapsed = 5.111,
@@ -174,7 +174,7 @@ test_that("print.stance_result handles multiple models and roles", {
   )
 
   # Check collapsed strings
-  expect_output(print(mock_res), "Types: object, statement", fixed = TRUE)
+  expect_output(print(mock_res), "Types: object, claim", fixed = TRUE)
   expect_output(print(mock_res), "Domain role(s): социолог, лингв", fixed = TRUE)
   expect_output(print(mock_res), "Model(s) used: claude-3, gpt-4o", fixed = TRUE)
 })
@@ -246,7 +246,7 @@ test_that("as.data.frame.stance_result extracts summary correctly", {
   mock_summary <- data.frame(
     text = "R is smart and tidy",
     target = "R is good",
-    type = "statement",
+    type = "claim",
     stance = "Positive",
     explanation = "AI Content Analysis Reasoning",
     stringsAsFactors = FALSE

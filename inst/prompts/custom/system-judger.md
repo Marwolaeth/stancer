@@ -2,4 +2,4 @@
 
 {{reference_instruction}}
 
-{{statement_instruction}}
+{{claim_instruction}}

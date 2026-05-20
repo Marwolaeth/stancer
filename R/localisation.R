@@ -139,7 +139,7 @@ stancer_check_translations <- function() {
 
 #' Convert analysis type to human-readable term
 #'
-#' @param type Analysis type: "object" or "statement"
+#' @param type Analysis type: "object" or "claim"
 #' @param language Language code
 #'
 #' @return Character string with localised term
@@ -148,15 +148,15 @@ stancer_check_translations <- function() {
 #' @noRd
 
 type_to_term <- function(
-    type = c('object', 'statement'),
+    type = c('object', 'claim'),
     language = stancer_available_languages()
 ) {
-  type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
+  type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
   language <- rlang::arg_match(language, stancer_available_languages(), multiple = FALSE)
 
   switch(
     type,
     object = l(language, 'object', 'dat'),
-    statement = l(language, 'statement', 'dat')
+    claim = l(language, 'claim', 'dat')
   )
 }

@@ -1,10 +1,10 @@
-Author's stance towards the target statement or object, expressed as 
+Author's stance towards the target claim (proposition) or object, expressed as 
 a continuous score from 0 to 100.
 
 ## Context-Specific Application
 
 - **OBJECT targets** (person, brand, entity): score represents sentiment intensity
-- **STATEMENT targets** (proposition, claim): score represents agreement intensity
+- **CLAIM targets** (proposition, claim): score represents agreement intensity
 
 ## Instructions
 

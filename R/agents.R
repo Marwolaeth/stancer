@@ -145,7 +145,7 @@ prepare_debater_chats <- function(
 #' and then initialises the chat objects via [tasks_prepare()].
 #'
 #' @param inputs A list containing all necessary data for prompt interpolation:
-#'   - `texts`: Character vector of statements to analyse.
+#'   - `texts`: Corpus of documents to analyse.
 #'   - `targets`: Character vector of analysis targets.
 #'   - `target_types`: Character vector of localised target types.
 #'   - `prompt_templates`: List of paths to markdown template files.
@@ -219,7 +219,7 @@ prepare_judger_chats <- function(
       NeutralResponse = debate_results$neutral,
       # Additional instructions based on object types
       add_reference_resolution = 'object' %in% types,
-      add_statement_resolution = 'statement' %in% types
+      add_claim_resolution = 'claim' %in% types
     )
   )
 

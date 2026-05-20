@@ -49,7 +49,7 @@ result <- llm_stance(
   text,
   target,
   type = "object", # stance towards a given object or entity
-  # type = "statement", # whether a text agrees with a certain statement
+  # type = "claim", # whether a text agrees with a certain proposition (claim), statement, or narrative
   chat_base = chat,
   domain_role = "economic analyst"
 )
@@ -176,7 +176,7 @@ stancer_check_translations()
 #   `system-judger` = "prompts/en/system-judger.md",
 #   `user-judger` = "prompts/en/user-judger.md",
 #   reference_resolution = "prompts/en/reference-resolution.md",
-#   statement_resolution = "prompts/en/statement-resolution.md",
+#   claim_resolution = "prompts/en/claim-resolution.md",
 #   scale_guide = "prompts/en/guide-likert.md"
 # )
 # 
@@ -185,11 +185,11 @@ stancer_check_translations()
 #   templates = templates,
 #   language = "en",
 #   add_reference_resolution = TRUE,
-#   add_statement_resolution = TRUE,
+#   add_claim_resolution = TRUE,
 #   target = "Climate change is a real concern",
 #   text = "Global warming is a serious threat",
-#   target_type = "the statement",
-#   FavourResponse = "This text is almost a paraphrase of the target statement",
+#   target_type = "the claim",
+#   FavourResponse = "This text is almost a paraphrase of the target claim",
 #   AgainstResponse = "This is most probably a parody of climate speeches.",
 #   NeutralResponse = "Context is missing and we should be sceptical"
 # )

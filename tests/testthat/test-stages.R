@@ -16,7 +16,7 @@ test_that("stage_1_parallel_analysis validates inputs and returns results", {
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     domain_roles = "AI Expert",
     prompt_templates = list(a = 1)
@@ -61,7 +61,7 @@ test_that("stage_1_parallel_analysis fails if required fields are missing", {
   incomplete_inputs <- list(
     texts = "T1",
     targets = "X",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
     prompt_templates = list()
   )
@@ -77,7 +77,7 @@ test_that("stage_1_parallel_analysis fails if required fields are missing", {
 
 test_that("stage_1_parallel_analysis respects verbose flag", {
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", domain_roles = "AI Expert", prompt_templates = list()
   )
 
@@ -113,7 +113,7 @@ test_that("stage_2_parallel_debates executes three debate branches", {
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     scale = 'likert',
     prompt_templates = list(t = 1),
@@ -192,7 +192,7 @@ test_that("stage_2_parallel_debates validates Stage 1 results before proceeding"
 test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text", {
   # Set-up minimal valid inputs
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", scale = "likert",
     prompt_templates = list(t = 1),
     analysis_results = list(
@@ -225,7 +225,7 @@ test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text
 test_that("stage_2_parallel_debates correctly localises stances for each branch", {
   # 1. Set-up data
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", scale = "likert",
     prompt_templates = list(t = "file"),
     analysis_results = list(
@@ -325,8 +325,8 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    types = c("statement", "statement"),
-    target_types = c("statement", "statement"),
+    types = c("claim", "claim"),
+    target_types = c("claim", "claim"),
     language = "en",
     scale = "likert",
     prompt_templates = list(scale_description = "Desc"),
@@ -383,7 +383,7 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
 
 test_that("stage_3_parallel_judgement warns when NA stances are returned", {
   inputs <- list(
-    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    texts = "T1", targets = "A", types = "claim", target_types = "claim",
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
@@ -415,7 +415,7 @@ test_that("stage_3_parallel_judgement warns when NA stances are returned", {
 
 test_that("stage_3_parallel_judgement passes additional arguments (...) to parallel call", {
   inputs <- list(
-    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    texts = "T1", targets = "A", types = "claim", target_types = "claim",
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )

@@ -5,7 +5,7 @@
 #' @description
 #' `llm_stance()` implements a multi-stage "Collaborative rOle-infused LLM-based
 #' Agents" (COLA) framework to detect stance in text towards a specific target
-#' or statement.
+#' (entity or proposition).
 #' It supports character vectors and data frames (compatible with `mall` style).
 #'
 #' @param x Input text(s) as a character vector or a data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
@@ -38,9 +38,9 @@ llm_stance <- function(x, ...) {
 #'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
 #' }
 #' 
-#' @param target Character. The entity or statement the stance is directed at.
+#' @param target Character. The entity or claim the stance is directed at.
 #' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
-#' @param type Analysis type: "object" (entity-based) or "statement" (proposition-based).
+#' @param type Analysis type: "object" (entity-based) or "claim" (proposition-based).
 #' @param language Language code (e.g., "en", "ru"). If `NULL`, auto-detected.
 #' @param scale Stance scale: "categorical", "numeric", or "likert".
 #' @param domain_role Optional specific role for the domain expert (e.g., "historian").
@@ -95,9 +95,9 @@ llm_stance.character <- function(
   # Validate type
   if (rlang::is_character(type)) {
     if (length(type == 2) != n) {
-      type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
     } else {
-      type <- rlang::arg_match(type, c('object', 'statement'), multiple = TRUE)
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = TRUE)
     }
   } else {
     cli::cli_abort(

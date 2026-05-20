@@ -7,7 +7,7 @@ test_that("templates_collect handles different scale types correctly", {
   file.create(file.path(sys_dir, "description-likert.md"))
   file.create(file.path(sys_dir, "guide-likert.md"))
   file.create(file.path(sys_dir, "reference-resolution.md"))
-  file.create(file.path(sys_dir, "statement-resolution.md"))
+  file.create(file.path(sys_dir, "claim-resolution.md"))
 
   # Create all other required role files
   roles <- c("system-linguist", "user-linguist", "system-domain", "user-domain",
@@ -41,7 +41,7 @@ test_that("templates_collect prioritises user directory over system directory", 
   # Create all other required files in sys_dir to satisfy the loop
   all_files <- c(
     "description-categorical.md", "guide-categorical.md",
-    "reference-resolution.md", "statement-resolution.md",
+    "reference-resolution.md", "claim-resolution.md",
     "system-linguist.md", "user-linguist.md", "system-domain.md", "user-domain.md",
     "system-interpreter.md", "user-interpreter.md", "system-debater.md",
     "user-debater.md", "user-judger.md"
@@ -161,7 +161,7 @@ test_that('prompts_prepare works with all valid roles', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -308,7 +308,7 @@ test_that('prompts_prepare works with judger role and no additional options', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -320,7 +320,7 @@ test_that('prompts_prepare works with judger role and no additional options', {
     templates = templates,
     language = "en",
     add_reference_resolution = FALSE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -335,9 +335,9 @@ test_that('prompts_prepare works with judger role and no additional options', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_no_match(result$system, "Resolve a reference if")
-  expect_no_match(result$system, "Rules for Statements")
+  expect_no_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare works with judger role and reference resolution', {
@@ -345,7 +345,7 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -357,7 +357,7 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -372,17 +372,17 @@ test_that('prompts_prepare works with judger role and reference resolution', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_match(result$system, "Resolve a reference if")
-  expect_no_match(result$system, "Rules for Statements")
+  expect_no_match(result$system, "Rules for Propositions")
 })
 
-test_that('prompts_prepare works with judger role and statement resolution', {
+test_that('prompts_prepare works with judger role and claim resolution', {
   templates <- list(
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -394,7 +394,7 @@ test_that('prompts_prepare works with judger role and statement resolution', {
     templates = templates,
     language = "en",
     add_reference_resolution = FALSE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -409,9 +409,9 @@ test_that('prompts_prepare works with judger role and statement resolution', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_no_match(result$system, "Resolve a reference if")
-  expect_match(result$system, "Rules for Statements")
+  expect_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare works with judger role and both options', {
@@ -419,7 +419,7 @@ test_that('prompts_prepare works with judger role and both options', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -431,7 +431,7 @@ test_that('prompts_prepare works with judger role and both options', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -446,9 +446,9 @@ test_that('prompts_prepare works with judger role and both options', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_match(result$system, "Resolve a reference if")
-  expect_match(result$system, "Rules for Statements")
+  expect_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare returns consistent results for same inputs', {
@@ -522,7 +522,7 @@ test_that('prompts_prepare fails with empty user prompt', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts
   ) |>

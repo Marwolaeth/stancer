@@ -9,7 +9,7 @@ If one or more colleagues have not provided arguments, do not ignore their absen
 
 {{reference_instruction}}
 
-{{statement_instruction}}
+{{claim_instruction}}
 
 ## Critical Note: Evaluate Expressed Stance, Not Text Purpose
 

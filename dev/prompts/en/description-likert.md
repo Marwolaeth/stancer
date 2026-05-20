@@ -1,4 +1,4 @@
-Author's stance towards the target statement or object, on a 5-point scale.
+Author's stance towards the target claim or object, on a 5-point scale.
 
 **Scale:**
 - Strongly Disagree
@@ -10,7 +10,7 @@ Author's stance towards the target statement or object, on a 5-point scale.
 **Interpretation:**
 - If target is an OBJECT (person, brand, entity): score reflects sentiment 
   intensity (Strongly Disagree = strong disapproval, Strongly Agree = strong approval).
-- If target is a STATEMENT (proposition, claim): score reflects agreement 
+- If target is a CLAIM (proposition, statement): score reflects agreement 
   intensity (Strongly Disagree = strong disagreement, Strongly Agree = strong agreement).
 
 **Important:** Evaluate based on what IS expressed in the text, even if 

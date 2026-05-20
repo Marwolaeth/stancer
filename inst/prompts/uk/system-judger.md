@@ -8,7 +8,7 @@
 
 {{reference_instruction}}
 
-{{statement_instruction}}
+{{claim_instruction}}
 
 ## Критична примітка: Оцінюйте виражену позицію, а не основну мету тексту
 

@@ -18,7 +18,7 @@
 #'
 #' For the `judger` role, additional instructions can be included:
 #' - `add_reference_resolution`: Include instructions for resolving references
-#' - `add_statement_resolution`: Include instructions for resolving statements
+#' - `add_claim_resolution`: Include instructions for resolving propositions
 #'
 #' The function performs the following operations:
 #' 1. Validates the role and language parameters
@@ -32,7 +32,7 @@
 #' @param role Role for which to prepare prompts. One of:
 #'   - `"linguist"`: Linguistic analysis
 #'   - `"domain"`: Domain expertise
-#'   - `"interpreter"`: Statement interpretation
+#'   - `"interpreter"`: Text interpretation
 #'   - `"debater"`: Argument presentation
 #'   - `"judger"`: Final judgement
 #'
@@ -40,7 +40,7 @@
 #'   - `system-{role}`: Path to system prompt template
 #'   - `user-{role}`: Path to user prompt template
 #'   - `reference_resolution`: Path to reference resolution instructions (for judger)
-#'   - `statement_resolution`: Path to statement resolution instructions (for judger)
+#'   - `claim_resolution`: Path to claim resolution instructions (for judger)
 #'   - `scale_guide`: Path to scale guide (for judger)
 #'
 #' @param language Language code for localisation (e.g., "en", "uk", "ru").
@@ -48,11 +48,11 @@
 #'   languages in the stancer translation dictionary.
 #'
 #' @param add_reference_resolution Logical. For the `judger` role only.
-#'   If `TRUE`, includes instructions for resolving references in statements.
+#'   If `TRUE`, includes instructions for resolving references in texts.
 #'   Defaults to `FALSE`.
 #'
-#' @param add_statement_resolution Logical. For the `judger` role only.
-#'   If `TRUE`, includes instructions for resolving statements.
+#' @param add_claim_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving propositions.
 #'   Defaults to `FALSE`.
 #'
 #' @param ... Additional named arguments passed to `ellmer::interpolate_file()`.
@@ -108,7 +108,7 @@
 #' #   `system-judger` = "prompts/en/system-judger.md",
 #' #   `user-judger` = "prompts/en/user-judger.md",
 #' #   reference_resolution = "prompts/en/reference-resolution.md",
-#' #   statement_resolution = "prompts/en/statement-resolution.md",
+#' #   claim_resolution = "prompts/en/claim-resolution.md",
 #' #   scale_guide = "prompts/en/guide-likert.md"
 #' # )
 #' # 
@@ -117,11 +117,11 @@
 #' #   templates = templates,
 #' #   language = "en",
 #' #   add_reference_resolution = TRUE,
-#' #   add_statement_resolution = TRUE,
+#' #   add_claim_resolution = TRUE,
 #' #   target = "Climate change is a real concern",
 #' #   text = "Global warming is a serious threat",
-#' #   target_type = "the statement",
-#' #   FavourResponse = "This text is almost a paraphrase of the target statement",
+#' #   target_type = "the claim",
+#' #   FavourResponse = "This text is almost a paraphrase of the target claim",
 #' #   AgainstResponse = "This is most probably a parody of climate speeches.",
 #' #   NeutralResponse = "Context is missing and we should be sceptical"
 #' # )
@@ -130,7 +130,7 @@ prompts_prepare <- function(
     templates,
     language = stancer_available_languages(),
     add_reference_resolution = FALSE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     ...
 ) {
   role <- rlang::arg_match(
@@ -156,13 +156,13 @@ prompts_prepare <- function(
       reference_instruction <- ''
     }
 
-    if (add_statement_resolution) {
-      statement_instruction <- ellmer::interpolate_file(
-        templates$statement_resolution
+    if (add_claim_resolution) {
+      claim_instruction <- ellmer::interpolate_file(
+        templates$claim_resolution
       )
     } else {
       # Default settings
-      statement_instruction <- ''
+      claim_instruction <- ''
     }
 
     scale_guide <- ellmer::interpolate_file(templates$scale_guide)
@@ -374,7 +374,7 @@ templates_collect <- function(prompts_dir, language, scale) {
     scale_description = glue::glue('description-{scale}.md'),
     scale_guide = glue::glue('guide-{scale}.md'),
     reference_resolution = 'reference-resolution.md',
-    statement_resolution = 'statement-resolution.md'
+    claim_resolution = 'claim-resolution.md'
   ) |>
     c(role_templates)
 

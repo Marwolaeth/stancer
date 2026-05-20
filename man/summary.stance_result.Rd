@@ -17,5 +17,5 @@ The input object (invisibly).
 \description{
 Provides a statistical summary of the stance analysis results. It displays
 the frequency distribution of detected stances and a cross-tabulation
-of stances by target entity/statement.
+of stances by target entity or proposition.
 }

@@ -281,7 +281,7 @@ llm_stance.data.frame <- function(
 
   # Fall-back to the defaults
   if (rlang::is_null(type_vec)) {
-    type_vec <- c('object', 'statement')
+    type_vec <- c('object', 'claim')
   }
 
   if (rlang::is_null(language_vec)) {
@@ -402,7 +402,7 @@ print.stance_result <- function(x, ...) {
 #' @description
 #' Provides a statistical summary of the stance analysis results. It displays
 #' the frequency distribution of detected stances and a cross-tabulation
-#' of stances by target entity/statement.
+#' of stances by target entity or proposition.
 #' @param object A `stance_result` object.
 #' @param ... Additional arguments passed to [base::print.table()].
 #'

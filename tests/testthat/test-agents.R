@@ -20,7 +20,7 @@ test_that("prepare_expert_chats successfully prepares linguist chats", {
   inputs <- list(
     texts = c("Statement 1", "Statement 2"),
     targets = c("Target A", "Target B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     domain_roles = "linguistic expert",
     prompt_templates = list(
@@ -97,7 +97,7 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("object", "statement"),
+    target_types = c("object", "claim"),
     language = "en",
     domain_roles = c("Content analysis expert", "Statistician"), # Multiple roles
     prompt_templates = list(
@@ -292,7 +292,7 @@ test_that("prepare_debater_chats correctly passes Stage 1 results to prompts_pre
   inputs <- list(
     texts = "Text 1",
     targets = "Target 1",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
     prompt_templates = list(t = "inst/prompts"),
     analysis_results = list(
@@ -383,9 +383,9 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
   inputs <- list(
     texts = "Text 1",
     targets = "Target 1",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
-    types = c("statement"), # Should trigger add_reference_resolution
+    types = c("claim"), # Should trigger add_reference_resolution
     prompt_templates = list(t = "file"),
     debate_results = list(
       positive = "Pos Debate",
@@ -415,14 +415,14 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_equal(args[[1]], "judger")
-  expect_equal(args$target_type, "statement")
+  expect_equal(args$target_type, "claim")
   expect_equal(args$FavourResponse, "Pos Debate")
   expect_equal(args$AgainstResponse, "Neg Debate")
   expect_equal(args$NeutralResponse, "Neu Debate")
 
   # Verify conditional flags
   expect_false(args$add_reference_resolution)
-  expect_true(args$add_statement_resolution)
+  expect_true(args$add_claim_resolution)
 })
 
 test_that("prepare_judger_chats aborts if multiple system prompts are generated", {
@@ -431,7 +431,7 @@ test_that("prepare_judger_chats aborts if multiple system prompts are generated"
     user = c("User 1", "User 2")
   ))
 
-  inputs <- list(texts = c("T1", "T2"), types = "statement", debate_results = list())
+  inputs <- list(texts = c("T1", "T2"), types = "claim", debate_results = list())
 
   expect_error(
     prepare_judger_chats(inputs, MockChat$new()),
@@ -440,10 +440,10 @@ test_that("prepare_judger_chats aborts if multiple system prompts are generated"
   )
 })
 
-test_that("prepare_judger_chats correctly handles statement resolution flag", {
+test_that("prepare_judger_chats correctly handles claim resolution flag", {
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement", language = "en",
-    types = "statement", # Should trigger add_statement_resolution
+    texts = "T1", targets = "A", target_types = "claim", language = "en",
+    types = "claim", # Should trigger add_claim_resolution
     prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
@@ -457,5 +457,5 @@ test_that("prepare_judger_chats correctly handles statement resolution flag", {
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_false(args$add_reference_resolution)
-  expect_true(args$add_statement_resolution)
+  expect_true(args$add_claim_resolution)
 })

@@ -165,7 +165,7 @@ result <- llm_stance(
   text,
   target,
   type = "object", # stance towards a given object or entity 
-  # type = "statement", # whether a text agrees with a certain statement
+  # type = "claim", # whether a text agrees with a certain proposition or statement
   chat_base = chat,
   domain_role = "economic analyst"
 )

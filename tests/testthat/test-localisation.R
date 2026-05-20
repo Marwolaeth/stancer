@@ -63,7 +63,7 @@ test_that('l() rejects invalid case value', {
 # Test 5a: l() rejects non-matching case value
 test_that('l() rejects non-matching case value', {
   expect_error(
-    l(language = "en", caption_id = "statement", case = "likert"),
+    l(language = "en", caption_id = "claim", case = "likert"),
     "not found for",
     fixed = TRUE
   )
@@ -110,10 +110,10 @@ test_that('l() works with Russian translation', {
 
 # Test 11: l() returns correct case variant
 test_that('l() returns correct case variant for different cases', {
-  gen <- l(language = "en", caption_id = "statement", case = "gen")
-  dat <- l(language = "en", caption_id = "statement", case = "dat")
-  expect_equal(gen, "the statement")
-  expect_equal(dat, "the following statement:")
+  gen <- l(language = "en", caption_id = "claim", case = "gen")
+  dat <- l(language = "en", caption_id = "claim", case = "dat")
+  expect_equal(gen, "the claim")
+  expect_equal(dat, "the following claim:")
   expect_true(gen != dat)
 })
 
@@ -200,10 +200,10 @@ test_that('type_to_term returns object term in English', {
   expect_equal(result, "the object")
 })
 
-# Test 2: type_to_term returns correct term for statement type
-test_that('type_to_term returns statement term in English', {
-  result <- type_to_term(type = "statement", language = "en")
-  expect_equal(result, "the following statement:")
+# Test 2: type_to_term returns correct term for claim type
+test_that('type_to_term returns claim term in English', {
+  result <- type_to_term(type = "claim", language = "en")
+  expect_equal(result, "the following claim:")
 })
 
 # Test 3: type_to_term works with Ukrainian language
@@ -214,7 +214,7 @@ test_that('type_to_term works with Ukrainian', {
 
 # Test 4: type_to_term works with Russian language
 test_that('type_to_term works with Russian', {
-  result <- type_to_term(type = "statement", language = "ru")
+  result <- type_to_term(type = "claim", language = "ru")
   expect_equal(result, "суждению")
 })
 
@@ -258,7 +258,7 @@ test_that('type_to_term works with all available languages', {
 
   for (lang in available_langs) {
     result_obj <- type_to_term(type = "object", language = lang)
-    result_stmt <- type_to_term(type = "statement", language = lang)
+    result_stmt <- type_to_term(type = "claim", language = lang)
 
     expect_type(result_obj, "character")
     expect_type(result_stmt, "character")
@@ -270,7 +270,7 @@ test_that('type_to_term works with all available languages', {
 # Test 10: type_to_term returns different terms for different types
 test_that('type_to_term returns different terms for different types', {
   object_term <- type_to_term(type = "object", language = "en")
-  statement_term <- type_to_term(type = "statement", language = "en")
+  claim_term <- type_to_term(type = "claim", language = "en")
 
-  expect_false(object_term == statement_term)
+  expect_false(object_term == claim_term)
 })

@@ -7,7 +7,7 @@
 
 {{reference_instruction}}
 
-{{statement_instruction}}
+{{claim_instruction}}
 
 ## Критическое замечание: Оценивайте выраженную позицию, а не основную цель текста
 

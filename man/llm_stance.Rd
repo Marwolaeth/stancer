@@ -43,11 +43,11 @@ llm_stance(x, ...)
 
 \item{...}{Additional arguments passed to \code{ellmer::parallel_chat_structured}.}
 
-\item{target}{Character. The entity or statement the stance is directed at.}
+\item{target}{Character. The entity or claim the stance is directed at.}
 
 \item{chat_base}{An \code{ellmer::Chat} object or a list of up to 3 such objects.}
 
-\item{type}{Analysis type: "object" (entity-based) or "statement" (proposition-based).}
+\item{type}{Analysis type: "object" (entity-based) or "claim" (proposition-based).}
 
 \item{language}{Language code (e.g., "en", "ru"). If \code{NULL}, auto-detected.}
 
@@ -82,7 +82,7 @@ S3 object of class "stance_result" with:
 \description{
 \code{llm_stance()} implements a multi-stage "Collaborative rOle-infused LLM-based
 Agents" (COLA) framework to detect stance in text towards a specific target
-or statement.
+(entity or proposition).
 It supports character vectors and data frames (compatible with \code{mall} style).
 
 The \code{character} method performs the full three-stage analysis:

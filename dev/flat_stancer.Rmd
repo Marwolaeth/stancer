@@ -67,7 +67,7 @@ result <- llm_stance(
   text,
   target,
   type = "object", # stance towards a given object or entity
-  # type = "statement", # whether a text agrees with a certain statement
+  # type = "claim", # whether a text agrees with a certain proposition (claim), statement, or narrative
   chat_base = chat,
   domain_role = "economic analyst"
 )
@@ -1486,7 +1486,7 @@ test_that('l() rejects invalid case value', {
 # Test 5a: l() rejects non-matching case value
 test_that('l() rejects non-matching case value', {
   expect_error(
-    l(language = "en", caption_id = "statement", case = "likert"),
+    l(language = "en", caption_id = "claim", case = "likert"),
     "not found for",
     fixed = TRUE
   )
@@ -1533,10 +1533,10 @@ test_that('l() works with Russian translation', {
 
 # Test 11: l() returns correct case variant
 test_that('l() returns correct case variant for different cases', {
-  gen <- l(language = "en", caption_id = "statement", case = "gen")
-  dat <- l(language = "en", caption_id = "statement", case = "dat")
-  expect_equal(gen, "the statement")
-  expect_equal(dat, "the following statement:")
+  gen <- l(language = "en", caption_id = "claim", case = "gen")
+  dat <- l(language = "en", caption_id = "claim", case = "dat")
+  expect_equal(gen, "the claim")
+  expect_equal(dat, "the following claim:")
   expect_true(gen != dat)
 })
 
@@ -1676,7 +1676,7 @@ test_that('stancer_check_translations handles all languages equally', {
 ```{r function-type_to_term}
 #' Convert analysis type to human-readable term
 #'
-#' @param type Analysis type: "object" or "statement"
+#' @param type Analysis type: "object" or "claim"
 #' @param language Language code
 #'
 #' @return Character string with localised term
@@ -1684,16 +1684,16 @@ test_that('stancer_check_translations handles all languages equally', {
 #' @filename localisation
 
 type_to_term <- function(
-    type = c('object', 'statement'),
+    type = c('object', 'claim'),
     language = stancer_available_languages()
 ) {
-  type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
+  type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
   language <- rlang::arg_match(language, stancer_available_languages(), multiple = FALSE)
 
   switch(
     type,
     object = l(language, 'object', 'dat'),
-    statement = l(language, 'statement', 'dat')
+    claim = l(language, 'claim', 'dat')
   )
 }
 ```
@@ -1705,10 +1705,10 @@ test_that('type_to_term returns object term in English', {
   expect_equal(result, "the object")
 })
 
-# Test 2: type_to_term returns correct term for statement type
-test_that('type_to_term returns statement term in English', {
-  result <- type_to_term(type = "statement", language = "en")
-  expect_equal(result, "the following statement:")
+# Test 2: type_to_term returns correct term for claim type
+test_that('type_to_term returns claim term in English', {
+  result <- type_to_term(type = "claim", language = "en")
+  expect_equal(result, "the following claim:")
 })
 
 # Test 3: type_to_term works with Ukrainian language
@@ -1719,7 +1719,7 @@ test_that('type_to_term works with Ukrainian', {
 
 # Test 4: type_to_term works with Russian language
 test_that('type_to_term works with Russian', {
-  result <- type_to_term(type = "statement", language = "ru")
+  result <- type_to_term(type = "claim", language = "ru")
   expect_equal(result, "суждению")
 })
 
@@ -1763,7 +1763,7 @@ test_that('type_to_term works with all available languages', {
 
   for (lang in available_langs) {
     result_obj <- type_to_term(type = "object", language = lang)
-    result_stmt <- type_to_term(type = "statement", language = lang)
+    result_stmt <- type_to_term(type = "claim", language = lang)
 
     expect_type(result_obj, "character")
     expect_type(result_stmt, "character")
@@ -1775,9 +1775,9 @@ test_that('type_to_term works with all available languages', {
 # Test 10: type_to_term returns different terms for different types
 test_that('type_to_term returns different terms for different types', {
   object_term <- type_to_term(type = "object", language = "en")
-  statement_term <- type_to_term(type = "statement", language = "en")
+  claim_term <- type_to_term(type = "claim", language = "en")
 
-  expect_false(object_term == statement_term)
+  expect_false(object_term == claim_term)
 })
 ```
 
@@ -2295,7 +2295,7 @@ templates_collect <- function(prompts_dir, language, scale) {
     scale_description = glue::glue('description-{scale}.md'),
     scale_guide = glue::glue('guide-{scale}.md'),
     reference_resolution = 'reference-resolution.md',
-    statement_resolution = 'statement-resolution.md'
+    claim_resolution = 'claim-resolution.md'
   ) |>
     c(role_templates)
 
@@ -2334,7 +2334,7 @@ test_that("templates_collect handles different scale types correctly", {
   file.create(file.path(sys_dir, "description-likert.md"))
   file.create(file.path(sys_dir, "guide-likert.md"))
   file.create(file.path(sys_dir, "reference-resolution.md"))
-  file.create(file.path(sys_dir, "statement-resolution.md"))
+  file.create(file.path(sys_dir, "claim-resolution.md"))
 
   # Create all other required role files
   roles <- c("system-linguist", "user-linguist", "system-domain", "user-domain",
@@ -2368,7 +2368,7 @@ test_that("templates_collect prioritises user directory over system directory", 
   # Create all other required files in sys_dir to satisfy the loop
   all_files <- c(
     "description-categorical.md", "guide-categorical.md",
-    "reference-resolution.md", "statement-resolution.md",
+    "reference-resolution.md", "claim-resolution.md",
     "system-linguist.md", "user-linguist.md", "system-domain.md", "user-domain.md",
     "system-interpreter.md", "user-interpreter.md", "system-debater.md",
     "user-debater.md", "user-judger.md"
@@ -2424,7 +2424,7 @@ test_that("templates_collect throws error if no folders found", {
 #'
 #' For the `judger` role, additional instructions can be included:
 #' - `add_reference_resolution`: Include instructions for resolving references
-#' - `add_statement_resolution`: Include instructions for resolving statements
+#' - `add_claim_resolution`: Include instructions for resolving propositions
 #'
 #' The function performs the following operations:
 #' 1. Validates the role and language parameters
@@ -2438,7 +2438,7 @@ test_that("templates_collect throws error if no folders found", {
 #' @param role Role for which to prepare prompts. One of:
 #'   - `"linguist"`: Linguistic analysis
 #'   - `"domain"`: Domain expertise
-#'   - `"interpreter"`: Statement interpretation
+#'   - `"interpreter"`: Text interpretation
 #'   - `"debater"`: Argument presentation
 #'   - `"judger"`: Final judgement
 #'
@@ -2446,7 +2446,7 @@ test_that("templates_collect throws error if no folders found", {
 #'   - `system-{role}`: Path to system prompt template
 #'   - `user-{role}`: Path to user prompt template
 #'   - `reference_resolution`: Path to reference resolution instructions (for judger)
-#'   - `statement_resolution`: Path to statement resolution instructions (for judger)
+#'   - `claim_resolution`: Path to claim resolution instructions (for judger)
 #'   - `scale_guide`: Path to scale guide (for judger)
 #'
 #' @param language Language code for localisation (e.g., "en", "uk", "ru").
@@ -2454,11 +2454,11 @@ test_that("templates_collect throws error if no folders found", {
 #'   languages in the stancer translation dictionary.
 #'
 #' @param add_reference_resolution Logical. For the `judger` role only.
-#'   If `TRUE`, includes instructions for resolving references in statements.
+#'   If `TRUE`, includes instructions for resolving references in texts.
 #'   Defaults to `FALSE`.
 #'
-#' @param add_statement_resolution Logical. For the `judger` role only.
-#'   If `TRUE`, includes instructions for resolving statements.
+#' @param add_claim_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving propositions.
 #'   Defaults to `FALSE`.
 #'
 #' @param ... Additional named arguments passed to `ellmer::interpolate_file()`.
@@ -2481,7 +2481,7 @@ prompts_prepare <- function(
     templates,
     language = stancer_available_languages(),
     add_reference_resolution = FALSE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     ...
 ) {
   role <- rlang::arg_match(
@@ -2507,13 +2507,13 @@ prompts_prepare <- function(
       reference_instruction <- ''
     }
 
-    if (add_statement_resolution) {
-      statement_instruction <- ellmer::interpolate_file(
-        templates$statement_resolution
+    if (add_claim_resolution) {
+      claim_instruction <- ellmer::interpolate_file(
+        templates$claim_resolution
       )
     } else {
       # Default settings
-      statement_instruction <- ''
+      claim_instruction <- ''
     }
 
     scale_guide <- ellmer::interpolate_file(templates$scale_guide)
@@ -2599,7 +2599,7 @@ prompts_prepare <- function(
 #   `system-judger` = "prompts/en/system-judger.md",
 #   `user-judger` = "prompts/en/user-judger.md",
 #   reference_resolution = "prompts/en/reference-resolution.md",
-#   statement_resolution = "prompts/en/statement-resolution.md",
+#   claim_resolution = "prompts/en/claim-resolution.md",
 #   scale_guide = "prompts/en/guide-likert.md"
 # )
 # 
@@ -2608,11 +2608,11 @@ prompts_prepare <- function(
 #   templates = templates,
 #   language = "en",
 #   add_reference_resolution = TRUE,
-#   add_statement_resolution = TRUE,
+#   add_claim_resolution = TRUE,
 #   target = "Climate change is a real concern",
 #   text = "Global warming is a serious threat",
-#   target_type = "the statement",
-#   FavourResponse = "This text is almost a paraphrase of the target statement",
+#   target_type = "the claim",
+#   FavourResponse = "This text is almost a paraphrase of the target claim",
 #   AgainstResponse = "This is most probably a parody of climate speeches.",
 #   NeutralResponse = "Context is missing and we should be sceptical"
 # )
@@ -2703,7 +2703,7 @@ test_that('prompts_prepare works with all valid roles', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -2850,7 +2850,7 @@ test_that('prompts_prepare works with judger role and no additional options', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -2862,7 +2862,7 @@ test_that('prompts_prepare works with judger role and no additional options', {
     templates = templates,
     language = "en",
     add_reference_resolution = FALSE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -2877,9 +2877,9 @@ test_that('prompts_prepare works with judger role and no additional options', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_no_match(result$system, "Resolve a reference if")
-  expect_no_match(result$system, "Rules for Statements")
+  expect_no_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare works with judger role and reference resolution', {
@@ -2887,7 +2887,7 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -2899,7 +2899,7 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = FALSE,
+    add_claim_resolution = FALSE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -2914,17 +2914,17 @@ test_that('prompts_prepare works with judger role and reference resolution', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_match(result$system, "Resolve a reference if")
-  expect_no_match(result$system, "Rules for Statements")
+  expect_no_match(result$system, "Rules for Propositions")
 })
 
-test_that('prompts_prepare works with judger role and statement resolution', {
+test_that('prompts_prepare works with judger role and claim resolution', {
   templates <- list(
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -2936,7 +2936,7 @@ test_that('prompts_prepare works with judger role and statement resolution', {
     templates = templates,
     language = "en",
     add_reference_resolution = FALSE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -2951,9 +2951,9 @@ test_that('prompts_prepare works with judger role and statement resolution', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_no_match(result$system, "Resolve a reference if")
-  expect_match(result$system, "Rules for Statements")
+  expect_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare works with judger role and both options', {
@@ -2961,7 +2961,7 @@ test_that('prompts_prepare works with judger role and both options', {
     `system-judger` = file.path(prompts_dir, 'system-judger.md'),
     `user-judger` = file.path(prompts_dir, 'user-judger.md'),
     reference_resolution = file.path(prompts_dir, 'reference-resolution.md'),
-    statement_resolution = file.path(prompts_dir, 'statement-resolution.md'),
+    claim_resolution = file.path(prompts_dir, 'claim-resolution.md'),
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
@@ -2973,7 +2973,7 @@ test_that('prompts_prepare works with judger role and both options', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts,
     target_type = "the object",
@@ -2988,9 +2988,9 @@ test_that('prompts_prepare works with judger role and both options', {
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
   expect_no_match(result$system, "reference_instruction")
-  expect_no_match(result$system, "statement_instruction")
+  expect_no_match(result$system, "claim_instruction")
   expect_match(result$system, "Resolve a reference if")
-  expect_match(result$system, "Rules for Statements")
+  expect_match(result$system, "Rules for Propositions")
 })
 
 test_that('prompts_prepare returns consistent results for same inputs', {
@@ -3064,7 +3064,7 @@ test_that('prompts_prepare fails with empty user prompt', {
     templates = templates,
     language = "en",
     add_reference_resolution = TRUE,
-    add_statement_resolution = TRUE,
+    add_claim_resolution = TRUE,
     target = "content analysis",
     text = texts
   ) |>
@@ -3397,7 +3397,7 @@ test_that("tasks_prepare clones the base chat deeply", {
 #' and then initialises the chat objects via [tasks_prepare()].
 #'
 #' @param inputs A list containing all necessary data for prompt interpolation:
-#'   - `texts`: Character vector of statements to analyse.
+#'   - `texts`: Corpus of documents to analyse.
 #'   - `targets`: Character vector of analysis targets.
 #'   - `target_types`: Character vector of localised target types.
 #'   - `prompt_templates`: List of paths to markdown template files.
@@ -3464,7 +3464,7 @@ test_that("prepare_expert_chats successfully prepares linguist chats", {
   inputs <- list(
     texts = c("Statement 1", "Statement 2"),
     targets = c("Target A", "Target B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     domain_roles = "linguistic expert",
     prompt_templates = list(
@@ -3541,7 +3541,7 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("object", "statement"),
+    target_types = c("object", "claim"),
     language = "en",
     domain_roles = c("Content analysis expert", "Statistician"), # Multiple roles
     prompt_templates = list(
@@ -3882,7 +3882,7 @@ test_that("prepare_debater_chats correctly passes Stage 1 results to prompts_pre
   inputs <- list(
     texts = "Text 1",
     targets = "Target 1",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
     prompt_templates = list(t = "inst/prompts"),
     analysis_results = list(
@@ -3991,7 +3991,7 @@ prepare_judger_chats <- function(
       NeutralResponse = debate_results$neutral,
       # Additional instructions based on object types
       add_reference_resolution = 'object' %in% types,
-      add_statement_resolution = 'statement' %in% types
+      add_claim_resolution = 'claim' %in% types
     )
   )
 
@@ -4026,9 +4026,9 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
   inputs <- list(
     texts = "Text 1",
     targets = "Target 1",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
-    types = c("statement"), # Should trigger add_reference_resolution
+    types = c("claim"), # Should trigger add_reference_resolution
     prompt_templates = list(t = "file"),
     debate_results = list(
       positive = "Pos Debate",
@@ -4058,14 +4058,14 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_equal(args[[1]], "judger")
-  expect_equal(args$target_type, "statement")
+  expect_equal(args$target_type, "claim")
   expect_equal(args$FavourResponse, "Pos Debate")
   expect_equal(args$AgainstResponse, "Neg Debate")
   expect_equal(args$NeutralResponse, "Neu Debate")
 
   # Verify conditional flags
   expect_false(args$add_reference_resolution)
-  expect_true(args$add_statement_resolution)
+  expect_true(args$add_claim_resolution)
 })
 
 test_that("prepare_judger_chats aborts if multiple system prompts are generated", {
@@ -4074,7 +4074,7 @@ test_that("prepare_judger_chats aborts if multiple system prompts are generated"
     user = c("User 1", "User 2")
   ))
 
-  inputs <- list(texts = c("T1", "T2"), types = "statement", debate_results = list())
+  inputs <- list(texts = c("T1", "T2"), types = "claim", debate_results = list())
 
   expect_error(
     prepare_judger_chats(inputs, MockChat$new()),
@@ -4083,10 +4083,10 @@ test_that("prepare_judger_chats aborts if multiple system prompts are generated"
   )
 })
 
-test_that("prepare_judger_chats correctly handles statement resolution flag", {
+test_that("prepare_judger_chats correctly handles claim resolution flag", {
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement", language = "en",
-    types = "statement", # Should trigger add_statement_resolution
+    texts = "T1", targets = "A", target_types = "claim", language = "en",
+    types = "claim", # Should trigger add_claim_resolution
     prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
@@ -4100,7 +4100,7 @@ test_that("prepare_judger_chats correctly handles statement resolution flag", {
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_false(args$add_reference_resolution)
-  expect_true(args$add_statement_resolution)
+  expect_true(args$add_claim_resolution)
 })
 ```
 
@@ -4221,7 +4221,7 @@ test_that("stage_1_parallel_analysis validates inputs and returns results", {
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     domain_roles = "AI Expert",
     prompt_templates = list(a = 1)
@@ -4266,7 +4266,7 @@ test_that("stage_1_parallel_analysis fails if required fields are missing", {
   incomplete_inputs <- list(
     texts = "T1",
     targets = "X",
-    target_types = "statement",
+    target_types = "claim",
     language = "en",
     prompt_templates = list()
   )
@@ -4282,7 +4282,7 @@ test_that("stage_1_parallel_analysis fails if required fields are missing", {
 
 test_that("stage_1_parallel_analysis respects verbose flag", {
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", domain_roles = "AI Expert", prompt_templates = list()
   )
 
@@ -4405,7 +4405,7 @@ test_that("stage_2_parallel_debates executes three debate branches", {
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    target_types = c("statement", "statement"),
+    target_types = c("claim", "claim"),
     language = "en",
     scale = 'likert',
     prompt_templates = list(t = 1),
@@ -4484,7 +4484,7 @@ test_that("stage_2_parallel_debates validates Stage 1 results before proceeding"
 test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text", {
   # Set-up minimal valid inputs
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", scale = "likert",
     prompt_templates = list(t = 1),
     analysis_results = list(
@@ -4517,7 +4517,7 @@ test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text
 test_that("stage_2_parallel_debates correctly localises stances for each branch", {
   # 1. Set-up data
   inputs <- list(
-    texts = "T1", targets = "A", target_types = "statement",
+    texts = "T1", targets = "A", target_types = "claim",
     language = "en", scale = "likert",
     prompt_templates = list(t = "file"),
     analysis_results = list(
@@ -4717,8 +4717,8 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
   inputs <- list(
     texts = c("T1", "T2"),
     targets = c("A", "B"),
-    types = c("statement", "statement"),
-    target_types = c("statement", "statement"),
+    types = c("claim", "claim"),
+    target_types = c("claim", "claim"),
     language = "en",
     scale = "likert",
     prompt_templates = list(scale_description = "Desc"),
@@ -4775,7 +4775,7 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
 
 test_that("stage_3_parallel_judgement warns when NA stances are returned", {
   inputs <- list(
-    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    texts = "T1", targets = "A", types = "claim", target_types = "claim",
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
@@ -4807,7 +4807,7 @@ test_that("stage_3_parallel_judgement warns when NA stances are returned", {
 
 test_that("stage_3_parallel_judgement passes additional arguments (...) to parallel call", {
   inputs <- list(
-    texts = "T1", targets = "A", types = "statement", target_types = "statement",
+    texts = "T1", targets = "A", types = "claim", target_types = "claim",
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
@@ -4861,7 +4861,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
 #' @description
 #' `llm_stance()` implements a multi-stage "Collaborative rOle-infused LLM-based
 #' Agents" (COLA) framework to detect stance in text towards a specific target
-#' or statement.
+#' (entity or proposition).
 #' It supports character vectors and data frames (compatible with `mall` style).
 #'
 #' @param x Input text(s) as a character vector or a data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
@@ -4898,9 +4898,9 @@ llm_stance <- function(x, ...) {
 #'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
 #' }
 #' 
-#' @param target Character. The entity or statement the stance is directed at.
+#' @param target Character. The entity or claim the stance is directed at.
 #' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
-#' @param type Analysis type: "object" (entity-based) or "statement" (proposition-based).
+#' @param type Analysis type: "object" (entity-based) or "claim" (proposition-based).
 #' @param language Language code (e.g., "en", "ru"). If `NULL`, auto-detected.
 #' @param scale Stance scale: "categorical", "numeric", or "likert".
 #' @param domain_role Optional specific role for the domain expert (e.g., "historian").
@@ -4947,9 +4947,9 @@ llm_stance.character <- function(
   # Validate type
   if (rlang::is_character(type)) {
     if (length(type == 2) != n) {
-      type <- rlang::arg_match(type, c('object', 'statement'), multiple = FALSE)
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
     } else {
-      type <- rlang::arg_match(type, c('object', 'statement'), multiple = TRUE)
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = TRUE)
     }
   } else {
     cli::cli_abort(
@@ -5508,7 +5508,7 @@ test_that("llm_stance.character: likert scale post-processing", {
   res <- llm_stance(
     x = "T",
     target = "T",
-    type = "statement",
+    type = "claim",
     chat_base = ellmer::chat_mistral(echo = "none"),
     language = "uk",
     scale = "likert",
@@ -5539,7 +5539,7 @@ test_that("llm_stance.character rejects invalid argument values", {
     llm_stance(
       "Content analysis is interesting",
       target = "Content Analysis is interesting",
-      type = "statement",
+      type = "claim",
       language = "en",
       domain_role = 111L
     ),
@@ -5577,7 +5577,7 @@ test_that("llm_stance.character throws error on wrong result length", {
   llm_stance(
     x = c("T1", "T2"),
     target = "T",
-    type = "statement",
+    type = "claim",
     chat_base = ellmer::chat_mistral(echo = "none"),
     language = "uk",
     scale = "likert",
@@ -5635,7 +5635,7 @@ llm_stance.data.frame <- function(
 
   # Fall-back to the defaults
   if (rlang::is_null(type_vec)) {
-    type_vec <- c('object', 'statement')
+    type_vec <- c('object', 'claim')
   }
 
   if (rlang::is_null(language_vec)) {
@@ -5937,7 +5937,7 @@ test_that("print.stance_result handles multiple models and roles", {
         n_processed = 2,
         n_failed = 0,
         language = "ru",
-        types = c("object", "statement"),
+        types = c("object", "claim"),
         domain_role = c("социолог", "лингвист"),
         model = c("claude-3", "gpt-4o"),
         elapsed = 5.111,
@@ -5948,7 +5948,7 @@ test_that("print.stance_result handles multiple models and roles", {
   )
 
   # Check collapsed strings
-  expect_output(print(mock_res), "Types: object, statement", fixed = TRUE)
+  expect_output(print(mock_res), "Types: object, claim", fixed = TRUE)
   expect_output(print(mock_res), "Domain role(s): социолог, лингв", fixed = TRUE)
   expect_output(print(mock_res), "Model(s) used: claude-3, gpt-4o", fixed = TRUE)
 })
@@ -5962,7 +5962,7 @@ test_that("print.stance_result handles multiple models and roles", {
 #' @description
 #' Provides a statistical summary of the stance analysis results. It displays
 #' the frequency distribution of detected stances and a cross-tabulation
-#' of stances by target entity/statement.
+#' of stances by target entity or proposition.
 #' @param object A `stance_result` object.
 #' @param ... Additional arguments passed to [base::print.table()].
 #'
@@ -6079,7 +6079,7 @@ test_that("as.data.frame.stance_result extracts summary correctly", {
   mock_summary <- data.frame(
     text = "R is smart and tidy",
     target = "R is good",
-    type = "statement",
+    type = "claim",
     stance = "Positive",
     explanation = "AI Content Analysis Reasoning",
     stringsAsFactors = FALSE

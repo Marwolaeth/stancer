@@ -2,9 +2,9 @@ en:
   object:
     gen: "the object"
     dat: "the object"
-  statement:
-    gen: "the statement"
-    dat: "the following statement:"
+  claim:
+    gen: "the claim"
+    dat: "the following claim:"
   analysis: "Text analysis for"
   text: "Text"
   stage_1: "Multidimensional analysis"
@@ -30,7 +30,7 @@ uk:
   object:
     gen: "об'єкта"
     dat: "об'єкту"
-  statement:
+  claim:
     gen: "твердження"
     dat: "твердженню"
   analysis: "Аналіз тексту для"
@@ -58,7 +58,7 @@ ru:
   object:
     gen: "объекта"
     dat: "объекту"
-  statement:
+  claim:
     gen: "суждения"
     dat: "суждению"
   analysis: "Анализ текста для"
@@ -81,4 +81,4 @@ ru:
       numeric: "негативная, около -1"
       likert: "отторжение"
   reference_instruction: "Местоимения и эллипсис относятся к объекту анализа, если контекст не указывает иное."
-  
+

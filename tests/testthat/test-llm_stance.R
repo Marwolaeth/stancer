@@ -313,7 +313,7 @@ test_that("llm_stance.character: likert scale post-processing", {
   res <- llm_stance(
     x = "T",
     target = "T",
-    type = "statement",
+    type = "claim",
     chat_base = ellmer::chat_mistral(echo = "none"),
     language = "uk",
     scale = "likert",
@@ -344,7 +344,7 @@ test_that("llm_stance.character rejects invalid argument values", {
     llm_stance(
       "Content analysis is interesting",
       target = "Content Analysis is interesting",
-      type = "statement",
+      type = "claim",
       language = "en",
       domain_role = 111L
     ),
@@ -382,7 +382,7 @@ test_that("llm_stance.character throws error on wrong result length", {
   llm_stance(
     x = c("T1", "T2"),
     target = "T",
-    type = "statement",
+    type = "claim",
     chat_base = ellmer::chat_mistral(echo = "none"),
     language = "uk",
     scale = "likert",
