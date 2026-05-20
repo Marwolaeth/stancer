@@ -49,7 +49,9 @@ pak::pak("Marwolaeth/stancer")
 
 ## Stance Analysis
 
-In the era of "text-as-data", researchers in media analytics and sociology face the challenge of extracting structured meaning from vast amounts of unstructured text. Traditional content analysis, as established by Klaus @krippendorff2004content, emphasizes that communication is not just about frequencies but about inferences — how text relates to its context and the intentions of its author. While practitioners often aim for the "interpretive" depth described by @Ahuvia2001, manual coding at scale is frequently impossible.
+In the era of "text-as-data", researchers in communication studies and sociology face the challenge of extracting structured meaning from vast amounts of unstructured text. Traditional content analysis, as established by Klaus @krippendorff2004content, emphasizes that communication is not just about frequencies but about inferences — how text relates to its context and the intentions of its author. While practitioners often aim for the "interpretive" depth described by @Ahuvia2001, manual coding at scale is frequently impossible.
+
+Large Language Models (LLMs) can serve as automated coders, shifting content analysis from dictionary-based methods to zero-shot and few-shot classification [@10.1162/coli_a_00502]. This paradigm shift enables the replication of human-like annotation at scale, bridging the gap between quantitative metrics and qualitative interpretation [@10.1162/coli_a_00502].
 
 A common pitfall in automated research is treating **Sentiment Analysis** and **Stance Analysis** as interchangeable. However, as noted by @BestvaterMonroe2023, they are conceptually distinct:
 
@@ -65,7 +67,7 @@ In political discourse and social media monitoring, sentiment and stance are oft
 
 **Stance (Target: Plastic Ban):** **Positive** (the author supports the ban).
 
-Standard sentiment lexicons would likely misclassify this as "Anti" due to the negative tone. `stancer` addresses this by using the **COLA framework** (Collaborative rOle-infused LLM-based Agents), which mimics the deliberation of human coders to capture the "interpretive" nuances of stance detection.
+Standard sentiment lexicons would likely misclassify this as "Against" due to the negative tone. `stancer` addresses this by using the **COLA framework** (Collaborative rOle-infused LLM-based Agents), which mimics the deliberation of human coders to capture the "interpretive" nuances of stance detection.
 
 ## How it works: The COLA Framework
 

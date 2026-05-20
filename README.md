@@ -48,7 +48,7 @@ pak::pak("Marwolaeth/stancer")
 
 ## Stance Analysis
 
-In the era of “text-as-data”, researchers in media analytics and
+In the era of “text-as-data”, researchers in communication studies and
 sociology face the challenge of extracting structured meaning from vast
 amounts of unstructured text. Traditional content analysis, as
 established by Klaus Krippendorff
@@ -58,6 +58,13 @@ its context and the intentions of its author. While practitioners often
 aim for the “interpretive” depth described by Ahuvia
 ([2001](#ref-Ahuvia2001)), manual coding at scale is frequently
 impossible.
+
+Large Language Models (LLMs) can serve as automated coders, shifting
+content analysis from dictionary-based methods to zero-shot and few-shot
+classification ([Ziems et al. 2024](#ref-10.1162/coli_a_00502)). This
+paradigm shift enables the replication of human-like annotation at
+scale, bridging the gap between quantitative metrics and qualitative
+interpretation ([Ziems et al. 2024](#ref-10.1162/coli_a_00502)).
 
 A common pitfall in automated research is treating **Sentiment
 Analysis** and **Stance Analysis** as interchangeable. However, as noted
@@ -93,8 +100,8 @@ conservative methods, it may also matter that the *ban* proposal was
 **Stance (Target: Plastic Ban):** **Positive** (the author supports the
 ban).
 
-Standard sentiment lexicons would likely misclassify this as “Anti” due
-to the negative tone. `stancer` addresses this by using the **COLA
+Standard sentiment lexicons would likely misclassify this as “Against”
+due to the negative tone. `stancer` addresses this by using the **COLA
 framework** (Collaborative rOle-infused LLM-based Agents), which mimics
 the deliberation of human coders to capture the “interpretive” nuances
 of stance detection.
@@ -399,6 +406,15 @@ Against a Table, or Vectors*. <https://mlverse.github.io/mall/>.
 Wickham, Hadley, Joe Cheng, Aaron Jacobs, Garrick Aden-Buie, and Barret
 Schloerke. 2025. *Ellmer: Chat with Large Language Models*.
 <https://ellmer.tidyverse.org>.
+
+</div>
+
+<div id="ref-10.1162/coli_a_00502" class="csl-entry">
+
+Ziems, Caleb, William Held, Omar Shaikh, Jiaao Chen, Zhehao Zhang, and
+Diyi Yang. 2024. “Can Large Language Models Transform Computational
+Social Science?” *Computational Linguistics* 50 (1): 237–91.
+<https://doi.org/10.1162/coli_a_00502>.
 
 </div>
 
