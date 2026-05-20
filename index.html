@@ -94,7 +94,8 @@
 <div class="section level2">
 <h2 id="stance-analysis">Stance Analysis<a class="anchor" aria-label="anchor" href="#stance-analysis"></a>
 </h2>
-<p>In the era of “text-as-data”, researchers in media analytics and sociology face the challenge of extracting structured meaning from vast amounts of unstructured text. Traditional content analysis, as established by Klaus Krippendorff (<a href="#ref-krippendorff2004content">2004</a>), emphasizes that communication is not just about frequencies but about inferences — how text relates to its context and the intentions of its author. While practitioners often aim for the “interpretive” depth described by Ahuvia (<a href="#ref-Ahuvia2001">2001</a>), manual coding at scale is frequently impossible.</p>
+<p>In the era of “text-as-data”, researchers in communication studies and sociology face the challenge of extracting structured meaning from vast amounts of unstructured text. Traditional content analysis, as established by Klaus Krippendorff (<a href="#ref-krippendorff2004content">2004</a>), emphasizes that communication is not just about frequencies but about inferences — how text relates to its context and the intentions of its author. While practitioners often aim for the “interpretive” depth described by Ahuvia (<a href="#ref-Ahuvia2001">2001</a>), manual coding at scale is frequently impossible.</p>
+<p>Large Language Models (LLMs) can serve as automated coders, shifting content analysis from dictionary-based methods to zero-shot and few-shot classification (<a href="#ref-10.1162/coli_a_00502">Ziems et al. 2024</a>). This paradigm shift enables the replication of human-like annotation at scale, bridging the gap between quantitative metrics and qualitative interpretation (<a href="#ref-10.1162/coli_a_00502">Ziems et al. 2024</a>).</p>
 <p>A common pitfall in automated research is treating <strong>Sentiment Analysis</strong> and <strong>Stance Analysis</strong> as interchangeable. However, as noted by Bestvater and Monroe (<a href="#ref-BestvaterMonroe2023">2023</a>), they are conceptually distinct:</p>
 <blockquote>
 <p>Sentiment analysis techniques have a long history in natural language processing and have become a standard tool in the analysis of political texts, promising a conceptually straightforward automated method of extracting meaning from textual data by scoring documents on a scale from positive to negative. However, while these kinds of sentiment scores can capture the overall tone of a document, the underlying concept of interest for political analysis is often actually the document’s stance with respect to a given target—how positively or negatively it frames a specific idea, individual, or group—as this reflects the author’s underlying political attitudes.</p>
@@ -106,7 +107,7 @@
 </blockquote>
 <p><strong>Sentiment:</strong> Negative (the author is <em>disgusted</em>; also, for more conservative methods, it may also matter that the <em>ban</em> proposal was <em>rejected</em>).</p>
 <p><strong>Stance (Target: Plastic Ban):</strong> <strong>Positive</strong> (the author supports the ban).</p>
-<p>Standard sentiment lexicons would likely misclassify this as “Anti” due to the negative tone. <code>stancer</code> addresses this by using the <strong>COLA framework</strong> (Collaborative rOle-infused LLM-based Agents), which mimics the deliberation of human coders to capture the “interpretive” nuances of stance detection.</p>
+<p>Standard sentiment lexicons would likely misclassify this as “Against” due to the negative tone. <code>stancer</code> addresses this by using the <strong>COLA framework</strong> (Collaborative rOle-infused LLM-based Agents), which mimics the deliberation of human coders to capture the “interpretive” nuances of stance detection.</p>
 </div>
 <div class="section level2">
 <h2 id="how-it-works-the-cola-framework">How it works: The COLA Framework<a class="anchor" aria-label="anchor" href="#how-it-works-the-cola-framework"></a>
@@ -306,6 +307,9 @@ Ruiz, Edgar. 2026. <em>Mall: Run Multiple Large Language Model Predictions Again
 </div>
 <div id="ref-ellmer2025" class="csl-entry">
 Wickham, Hadley, Joe Cheng, Aaron Jacobs, Garrick Aden-Buie, and Barret Schloerke. 2025. <em>Ellmer: Chat with Large Language Models</em>. <a href="https://ellmer.tidyverse.org" class="external-link uri">https://ellmer.tidyverse.org</a>.
+</div>
+<div id="ref-10.1162/coli_a_00502" class="csl-entry">
+Ziems, Caleb, William Held, Omar Shaikh, Jiaao Chen, Zhehao Zhang, and Diyi Yang. 2024. “Can Large Language Models Transform Computational Social Science?” <em>Computational Linguistics</em> 50 (1): 237–91. <a href="https://doi.org/10.1162/coli_a_00502" class="external-link uri">https://doi.org/10.1162/coli_a_00502</a>.
 </div>
 </div>
 </div>
