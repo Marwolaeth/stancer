@@ -85,6 +85,8 @@ Following the approach by @lan2024stancedetectioncollaborativeroleinfused, `stan
 
 The package automatically detects the language of your text (using `cld2` if available) or allows you to specify it manually in `llm_stance()`. Currently, only the three languages listed above are available.
 
+For other languages or multilingual corpora, specifying English ("en") is usually a reliable fallback, since most modern LLMs have strong cross-lingual capabilities.
+
 ## Usage
 
 `stancer` works with chat objects from the [ellmer](https://ellmer.tidyverse.org/) package. This gives you the flexibility to use any supported model (OpenAI, Anthropic, Ollama, etc.) as your analysis engine.

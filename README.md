@@ -131,6 +131,10 @@ The package automatically detects the language of your text (using
 `llm_stance()`. Currently, only the three languages listed above are
 available.
 
+For other languages or multilingual corpora, specifying English (“en”)
+is usually a reliable fallback, since most modern LLMs have strong
+cross-lingual capabilities.
+
 ## Usage
 
 `stancer` works with chat objects from the
