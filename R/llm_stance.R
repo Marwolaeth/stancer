@@ -131,6 +131,7 @@ llm_stance.character <- function(
   }
 
   # Validate scale
+  scale <- tolower(scale) # Can write ‘Likert’
   scale <- rlang::arg_match(scale, c('categorical', 'numeric', 'likert'))
 
   # Validate domain_role
@@ -274,6 +275,8 @@ llm_stance.character <- function(
     #     1
     # )
   } else if (scale == 'likert') {
+    # Rename as proper noun
+    scale <- 'Likert'
     output$judgement_results$stance <- factor(
       output$judgement_results$stance,
       levels = c(
@@ -319,6 +322,7 @@ llm_stance.character <- function(
         n_total = n,
         n_processed = nrow(output$judgement_results),
         n_failed = sum(is.na(output$judgement_results$stance)),
+        scale = scale,
         language = language,
         types = unique(type),
         domain_role = domain_role,

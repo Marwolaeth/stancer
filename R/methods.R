@@ -375,6 +375,7 @@ print.stance_result <- function(x, ...) {
         "\n"
     )
     cat(glue::glue("Failed: {x$metadata$n_failed} items"), "\n")
+    cat(glue::glue("Scale: {x$metadata$scale}"), "\n")
     cat(glue::glue("Language: {x$metadata$language}"), "\n")
     cat(glue::glue("Types: {paste(x$metadata$types, collapse = ', ')}"), "\n")
     cat(

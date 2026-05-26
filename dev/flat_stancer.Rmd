@@ -4982,6 +4982,7 @@ llm_stance.character <- function(
   }
 
   # Validate scale
+  scale <- tolower(scale) # Can write ‘Likert’
   scale <- rlang::arg_match(scale, c('categorical', 'numeric', 'likert'))
 
   # Validate domain_role
@@ -5125,6 +5126,8 @@ llm_stance.character <- function(
     #     1
     # )
   } else if (scale == 'likert') {
+    # Rename as proper noun
+    scale <- 'Likert'
     output$judgement_results$stance <- factor(
       output$judgement_results$stance,
       levels = c(
@@ -5170,6 +5173,7 @@ llm_stance.character <- function(
         n_total = n,
         n_processed = nrow(output$judgement_results),
         n_failed = sum(is.na(output$judgement_results$stance)),
+        scale = scale,
         language = language,
         types = unique(type),
         domain_role = domain_role,
@@ -5257,6 +5261,7 @@ test_that("llm_stance.character handles chat list and cloning", {
     res, c("summary", "analysis", "debates", "judgements", "metadata")
   )
   expect_equal(res$metadata$n_total, 1)
+  expect_equal(res$metadata$scale, "categorical")
   expect_s3_class(res, "stance_result")
 
   # Test with list of 1 chat
@@ -5287,12 +5292,13 @@ test_that("llm_stance.character handles chat list and cloning", {
   chat_list <- list(chat, chat, chat)
   res_list <- llm_stance(
     "Text mining is fun", "Text mining", type = "object",
-    chat_base = chat_list, verbose = FALSE, language = "en"
+    chat_base = chat_list, scale = "Likert", verbose = FALSE
   )
   expect_named(
     res_list, c("summary", "analysis", "debates", "judgements", "metadata")
   )
   expect_equal(res_list$metadata$n_total, 1)
+  expect_equal(res_list$metadata$scale, "Likert")
   expect_s3_class(res_list, "stance_result")
   
   # Test with list with one invalid element
@@ -5849,6 +5855,7 @@ print.stance_result <- function(x, ...) {
         "\n"
     )
     cat(glue::glue("Failed: {x$metadata$n_failed} items"), "\n")
+    cat(glue::glue("Scale: {x$metadata$scale}"), "\n")
     cat(glue::glue("Language: {x$metadata$language}"), "\n")
     cat(glue::glue("Types: {paste(x$metadata$types, collapse = ', ')}"), "\n")
     cat(

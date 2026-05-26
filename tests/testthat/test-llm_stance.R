@@ -63,6 +63,7 @@ test_that("llm_stance.character handles chat list and cloning", {
     res, c("summary", "analysis", "debates", "judgements", "metadata")
   )
   expect_equal(res$metadata$n_total, 1)
+  expect_equal(res$metadata$scale, "categorical")
   expect_s3_class(res, "stance_result")
 
   # Test with list of 1 chat
@@ -93,12 +94,13 @@ test_that("llm_stance.character handles chat list and cloning", {
   chat_list <- list(chat, chat, chat)
   res_list <- llm_stance(
     "Text mining is fun", "Text mining", type = "object",
-    chat_base = chat_list, verbose = FALSE, language = "en"
+    chat_base = chat_list, scale = "Likert", verbose = FALSE
   )
   expect_named(
     res_list, c("summary", "analysis", "debates", "judgements", "metadata")
   )
   expect_equal(res_list$metadata$n_total, 1)
+  expect_equal(res_list$metadata$scale, "Likert")
   expect_s3_class(res_list, "stance_result")
   
   # Test with list with one invalid element
