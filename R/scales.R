@@ -115,7 +115,7 @@ type_stance_analysis <- function(language, description_file, scale = "categorica
 #' @noRd
 type_stance_categorical <- function(description_file) {
   ellmer::type_enum(
-    values = c('Positive', 'Negative', 'Neutral'),
+    values = c('Negative', 'Neutral', 'Positive'),
     description = ellmer::interpolate_file(description_file)
   )
 }

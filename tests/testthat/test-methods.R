@@ -192,7 +192,7 @@ test_that("summary.stance_result outputs distribution tables", {
         target = c("Target A", "Target A", "Target B"),
         stance = factor(
           c("Negative", "Neutral", "Negative"),
-          levels = c("Positive", "Neutral", "Negative")
+          levels = c("Negative", "Neutral", "Positive")
         )
       )
     ),
@@ -205,8 +205,8 @@ test_that("summary.stance_result outputs distribution tables", {
 
   # 3. Verify Table Content
   # Check for stance counts in the distribution table
-  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
-  expect_output(summary(mock_res), "0        1        2", fixed = TRUE)
+  expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "2        1        0", fixed = TRUE)
 
   # Check for target-based cross-tabulation
   expect_output(summary(mock_res), "Target A", fixed = TRUE)
@@ -224,7 +224,7 @@ test_that("summary.stance_result handles empty or NA results", {
         target = "Target A",
         stance = factor(
           NA_character_,
-          levels = c("Positive", "Neutral", "Negative")
+          levels = c("Negative", "Neutral", "Positive")
         )
       )
     ),
@@ -233,7 +233,7 @@ test_that("summary.stance_result handles empty or NA results", {
 
   # table() by default excludes NA, so we expect 0 counts but the headers should remain
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
-  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
   expect_output(summary(mock_res), "0        0        0", fixed = TRUE)
 })
 
@@ -310,7 +310,7 @@ mock_res <- structure(
       language = "en",
       stance = factor(
         'Positive',
-        levels = c('Positive', 'Negative', 'Neutral')
+        levels = c("Negative", "Neutral", "Positive")
       ),
       explanation = c(
         "The explicit statement 'Julia is fast & beautiful'",

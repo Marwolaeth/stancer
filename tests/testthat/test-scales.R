@@ -15,7 +15,7 @@ test_that('type_stance_categorical includes three values', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))
   result <- type_stance_categorical(template_file)
-  expect_equal(result@values, c('Positive', 'Negative', 'Neutral'))
+  expect_equal(result@values, c('Negative', 'Neutral', 'Positive'))
 })
 
 test_that('type_stance_categorical loads description from file', {
@@ -144,7 +144,10 @@ test_that('type_stance_analysis creates categorical scale by default', {
     description_file = template_file
   )
   expect_is(result@properties$stance, "ellmer::TypeEnum")
-  expect_equal(result@properties$stance@values, c('Positive', 'Negative', 'Neutral'))
+  expect_equal(
+    result@properties$stance@values,
+    c('Negative', 'Neutral', 'Positive')
+  )
 })
 
 test_that('type_stance_analysis creates numeric scale when specified', {

@@ -288,6 +288,12 @@ llm_stance.character <- function(
       ),
       ordered = TRUE
     )
+  } else if (scale == "categorical") {
+    output$judgement_results$stance <- factor(
+      as.character(output$judgement_results$stance),
+      levels = c('Negative', 'Neutral', 'Positive'),
+      ordered = FALSE
+    )
   }
 
   ## Postprocessing ----

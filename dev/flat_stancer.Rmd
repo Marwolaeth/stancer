@@ -1830,7 +1830,7 @@ test_that('type_to_term returns different terms for different types', {
 #' @rdname type_stance
 type_stance_categorical <- function(description_file) {
   ellmer::type_enum(
-    values = c('Positive', 'Negative', 'Neutral'),
+    values = c('Negative', 'Neutral', 'Positive'),
     description = ellmer::interpolate_file(description_file)
   )
 }
@@ -1873,7 +1873,7 @@ test_that('type_stance_categorical includes three values', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))
   result <- type_stance_categorical(template_file)
-  expect_equal(result@values, c('Positive', 'Negative', 'Neutral'))
+  expect_equal(result@values, c('Negative', 'Neutral', 'Positive'))
 })
 
 test_that('type_stance_categorical loads description from file', {
@@ -2078,7 +2078,10 @@ test_that('type_stance_analysis creates categorical scale by default', {
     description_file = template_file
   )
   expect_is(result@properties$stance, "ellmer::TypeEnum")
-  expect_equal(result@properties$stance@values, c('Positive', 'Negative', 'Neutral'))
+  expect_equal(
+    result@properties$stance@values,
+    c('Negative', 'Neutral', 'Positive')
+  )
 })
 
 test_that('type_stance_analysis creates numeric scale when specified', {
@@ -5139,6 +5142,12 @@ llm_stance.character <- function(
       ),
       ordered = TRUE
     )
+  } else if (scale == "categorical") {
+    output$judgement_results$stance <- factor(
+      as.character(output$judgement_results$stance),
+      levels = c('Negative', 'Neutral', 'Positive'),
+      ordered = FALSE
+    )
   }
 
   ## Postprocessing ----
@@ -6002,7 +6011,7 @@ test_that("summary.stance_result outputs distribution tables", {
         target = c("Target A", "Target A", "Target B"),
         stance = factor(
           c("Negative", "Neutral", "Negative"),
-          levels = c("Positive", "Neutral", "Negative")
+          levels = c("Negative", "Neutral", "Positive")
         )
       )
     ),
@@ -6015,8 +6024,8 @@ test_that("summary.stance_result outputs distribution tables", {
 
   # 3. Verify Table Content
   # Check for stance counts in the distribution table
-  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
-  expect_output(summary(mock_res), "0        1        2", fixed = TRUE)
+  expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "2        1        0", fixed = TRUE)
 
   # Check for target-based cross-tabulation
   expect_output(summary(mock_res), "Target A", fixed = TRUE)
@@ -6034,7 +6043,7 @@ test_that("summary.stance_result handles empty or NA results", {
         target = "Target A",
         stance = factor(
           NA_character_,
-          levels = c("Positive", "Neutral", "Negative")
+          levels = c("Negative", "Neutral", "Positive")
         )
       )
     ),
@@ -6043,7 +6052,7 @@ test_that("summary.stance_result handles empty or NA results", {
 
   # table() by default excludes NA, so we expect 0 counts but the headers should remain
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
-  expect_output(summary(mock_res), "Positive Neutral", fixed = TRUE)
+  expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
   expect_output(summary(mock_res), "0        0        0", fixed = TRUE)
 })
 ```
@@ -6368,7 +6377,7 @@ mock_res <- structure(
       language = "en",
       stance = factor(
         'Positive',
-        levels = c('Positive', 'Negative', 'Neutral')
+        levels = c("Negative", "Neutral", "Positive")
       ),
       explanation = c(
         "The explicit statement 'Julia is fast & beautiful'",
