@@ -4851,6 +4851,12 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
 
 ---
 
+# Stance Analysis Frameworks
+
+```{r function stance_cola}
+
+```
+
 # Main Analysis Function
 
 ## LLM Stance Detection
@@ -4928,6 +4934,7 @@ llm_stance.character <- function(
     target,
     chat_base,
     type = c('object'),
+    method = "cola",
     language = stancer_available_languages(),
     scale = c('categorical', 'numeric', 'likert'),
     domain_role = NULL,
@@ -4958,6 +4965,11 @@ llm_stance.character <- function(
       "{.arg type} must be a character vector, got {.cls {class(type)}}"
     )
   }
+  
+  # Validate method
+  validate_character(method)
+  method <- tolower(method)
+  method <- rlang::arg_match(method, c("cola", "pamr", "default"))
 
   # Validate language
   if (is.null(language) || length(language) > 1) {
@@ -5110,6 +5122,32 @@ llm_stance.character <- function(
   }
 
   ## Analysis ----
+  output <- switch(
+    method,
+    cola = stance_cola(
+      text = text, 
+      target = target, 
+      type = type, 
+      chat_base = chat_base, 
+      domain_role = domain_role,
+      ...
+    ),
+    pamr = stance_pamr(
+      text = text, 
+      target = target, 
+      type = type, 
+      chat_base = chat_base, 
+      ...
+    ),
+    default = stance_default(
+      text = text, 
+      target = target, 
+      type = type, 
+      chat_base = chat_base, 
+      ...
+    )
+  )
+  
   output <- inputs |>
     stage_1_parallel_analysis(chats[[1]], verbose, rpm) |>
     validate_stage('Stage 1 (Expert analysis)') |>
