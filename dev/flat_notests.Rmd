@@ -1,0 +1,2466 @@
+---
+title: 'stancer: Stance Analysis using Ensemble of LLM Agents through `ellmer`'
+output: html_document
+editor_options:
+chunk_output_type: console
+---
+
+```{r development, include=FALSE}
+library(testthat)
+library(withr)
+library(mockery)
+library(rlang)
+library(cli)
+library(ellmer)
+library(yaml)
+```
+
+```{r description}
+fusen::fill_description(
+  pkg = here::here(),
+  fields = list(
+    package = "stancer",
+    Title = "Stance Analysis using Ensemble of LLM Agents through `ellmer`",
+    Description = "Tools for stance analysis using an ensemble of large language models. The package follows a multi-stage process in which different agents perform linguistic analysis, role-play as domain experts, and engage in structured debates to reach a final judgment. It works with 'ellmer' chat objects, so a user can choose which models and providers to use. Each result includes the full reasoning and intermediate steps from the agents.",
+    `Authors@R` = c(
+      person("Andrej", "Pawluczenko", email = "a.pawluczenko@gmail.com", role = c("aut", "cre"))
+    )
+  ),
+  overwrite = TRUE
+)
+# Define License with use_*_license()
+usethis::use_ccby_license()
+
+usethis::use_package('ellmer')
+usethis::use_package('yaml')
+usethis::use_package('glue')
+usethis::use_package('cli')
+usethis::use_package('rlang')
+usethis::use_package('tibble')
+usethis::use_package('cld2', type = "Suggests")
+
+usethis::reso
+```
+
+# Introduction
+
+## Overview
+
+---
+
+# Utility Functions
+
+## Text Truncation
+
+```{r function-truncate}
+#' Truncate numeric values to a range
+#'
+#' Constrains numeric values to fall within the range [a, b].
+#' Values below a are set to a, values above b are set to b.
+#'
+#' @param x Numeric vector to truncate
+#' @param a Numeric. Lower bound (minimum value)
+#' @param b Numeric. Upper bound (maximum value)
+#'
+#' @return Numeric vector with values constrained to [a, b]
+#' @keywords internal
+#'
+#' @examples
+#' truncate(c(-1, 0, 5, 10), a = 0, b = 5)
+#' # Returns: 0, 0, 5, 5
+#' @filename utils
+
+truncate <- function(x, a, b) {
+  if (!is.numeric(x)) {
+    cli::cli_abort("{.arg x} must be numeric")
+  }
+  if (!is.numeric(a)) {
+    cli::cli_abort("{.arg a} must be numeric")
+  }
+  if (!is.numeric(b)) {
+    cli::cli_abort("{.arg b} must be numeric")
+  }
+
+  pmin(pmax(x, a), b)
+}
+```
+
+## Expression Catching
+
+```{r function-catch}
+#' Safely evaluate expression and catch errors
+#'
+#' @param expr Expression to evaluate
+#' @param expr_name Name of expression for error messages
+#'
+#' @return Result of expression or throws an error
+#' @keywords internal
+#' @importFrom rlang is_scalar_character try_fetch
+#' @importFrom cli cli_abort
+#' @filename utils
+
+catch <- function(
+    expr,
+    expr_name = paste(deparse(substitute(expr)), collapse = '')
+) {
+  if (!rlang::is_scalar_character(expr_name)) {
+    cli::cli_abort(
+      "{.arg expr_name} must be a character scalar.
+            Got {.cls {class(expr_name)}}"
+    )
+  }
+
+  rlang::try_fetch(
+    expr,
+    error = function(e) {
+      abort("Error in {expr_name}: {e$message}")
+    }
+  )
+}
+```
+
+```{r function-catch_eval}
+#' Safely evaluate quosures (throws an error)
+#'
+#' @param quo A quosure to evaluate
+#' @param data A data frame, or named list or vector.
+#'
+#' @return Result of evaluation or throws an error
+#' @keywords internal
+#' @importFrom rlang is_quosure try_fetch as_name
+#' @importFrom cli cli_abort
+
+catch_eval <- function(
+    quo,
+    data
+) {
+  if (!rlang::is_quosure(quo)) {
+    cli::cli_abort(
+      "{.arg quo} must be a quosure.
+            Got {.cls {class(quo)}}"
+    )
+  }
+
+  rlang::try_fetch(
+    rlang::eval_tidy(quo, data),
+    error = function(e) {
+      abort(
+        c(
+          "Cannot find {.val {rlang::as_name(quo)}} in data or environment",
+          "i" = "Use a column name or provide a vector"
+        )
+      )
+    }
+  )
+}
+```
+
+```{r function-safe_eval}
+#' Safely evaluate quosures (returns NULL)
+#'
+#' @param quo A quosure to evaluate
+#' @param data A data frame, or named list or vector.
+#'
+#' @return Result of evaluation or `NULL`
+#' @keywords internal
+#' @importFrom rlang try_fetch
+#' @filename utils
+
+safe_eval <- function(
+    quo,
+    data
+) {
+  rlang::try_fetch(
+    catch_eval(quo, data),
+    error = function(e) NULL
+  )
+}
+```
+
+## Input Validation
+
+```{r function-validate_fields}
+#' Validate input structure and required fields
+#'
+#' @description
+#' An internal helper to ensure that a list (typically an input or result
+#' object) contains all the necessary fields required for a specific
+#' analysis stage.
+#'
+#' @param inputs The list or named vector to validate.
+#' @param required_fields Character vector of the field names that must
+#'   be present in `inputs`.
+#' @param input_name Character scalar. A descriptive name for the
+#'   object being validated, used in error messages.
+#'
+#' @return Invisibly TRUE if all required fields are present or throws an error if `inputs` is NULL, if any required fields are missing, or if `input_name` is not a character scalar.
+#'
+#' @keywords internal
+#' @importFrom rlang is_scalar_character
+#' @importFrom cli cli_abort
+#' @filename validate
+
+validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
+  if (!rlang::is_scalar_character(input_name)) {
+    cli::cli_abort("{.arg input_name} must be a character scalar.")
+  }
+
+  if (is.null(inputs)) {
+    abort("Input for {input_name} is empty")
+  }
+
+  missing_fields <- setdiff(required_fields, names(inputs))
+  if (length(missing_fields) > 0) {
+    abort(
+      "Input for {input_name} misses required fields: {.var {missing_fields}}"
+    )
+  }
+
+  invisible(TRUE)
+}
+```
+
+```{r function-validate_inputs}
+#' Validate input length
+#'
+#' @param inputs Input vector
+#' @param expected_length Expected length
+#' @param input_name Informative name for error messages
+#'
+#' @return Invisibly TRUE or throws error
+#' @keywords internal
+#' @importFrom rlang is_scalar_character
+#' @importFrom cli cli_abort
+#' @filename validate
+
+validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
+  if (!rlang::is_scalar_character(input_name)) {
+    cli::cli_abort("{.arg input_name} must be a character scalar.")
+  }
+
+  if (is.null(inputs) || length(inputs) != expected_length) {
+    abort("{input_name} returned unexpected results")
+  }
+
+  invisible(TRUE)
+}
+```
+
+```{r function-validate_character}
+#' Validate a character argument
+#'
+#' @param x Input to validate
+#'
+#' @return Invisibly TRUE or throws error
+#' @keywords internal
+#' @importFrom rlang is_character
+#' @filename validate
+
+validate_character <- function(x) {
+  arg_name <- deparse(substitute(x))
+
+  if (!rlang::is_character(x)) {
+    abort(
+      "{.arg {arg_name}} must be a character vector, got {.cls {class(x)}}"
+    )
+  }
+  if (length(x) == 0) {
+    abort("{.arg {arg_name}} cannot be empty")
+  }
+  if (any(is.na(x)) || any(ellmer:::trim(x) == '')) {
+    abort(
+      c(
+        "{.arg {arg_name}} contains empty strings.",
+        "i" = "consider removing them before analysis."
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+```
+
+```{r function-validate_stage}
+#' Validate stage configuration
+#'
+#' @param x Stage configuration
+#' @param stage_name Name of stage for error messages
+#'
+#' @return Unmodified `x` or throws an error
+#' @keywords internal
+#' @filename validate
+
+validate_stage <- function(x, stage_name) {
+  if (is.null(x)) {
+    abort("{stage_name} returned NULL")
+  }
+  x
+}
+```
+
+## Argument Recycling
+
+```{r function-recycle_arg}
+#' Recycle argument to specified length
+#'
+#' @param arg Values to recycle
+#' @param n Target length
+#'
+#' @return Recycled argument values
+#' @keywords internal
+#' @filename utils
+
+recycle_arg <- function(arg, n) {
+  arg_name <- deparse(substitute(arg))
+
+  if (length(arg) == 1) {
+    return(rep(arg, n))
+  } else if (length(arg) == n) {
+    return(arg)
+  } else {
+    abort(
+      "{.arg {arg_name}} must have length 1 or {n} (same as {.arg text}). \\
+            Got {length(arg)}."
+    )
+  }
+}
+```
+
+## Timing
+
+```{r function-stage_complete}
+#' Format timing message
+#'
+#' @param tic Start time
+#' @param toc End time
+#' @param msg Message prefix
+#'
+#' @return Formatted timing message
+#' @keywords internal
+#' @importFrom glue glue
+#' @filename verbose
+
+stage_complete <- function(tic, toc, msg) {
+  tocmsg <- paste0(round(toc - tic, 3), " seconds elapsed")
+
+  if (is.null(msg) || is.na(msg) || length(msg) == 0) {
+    outmsg <- tocmsg
+  } else {
+    outmsg <- glue::glue('\u2705 {msg} complete \U2014 {tocmsg}\n\n')
+  }
+  outmsg
+}
+```
+
+---
+
+# Translations and Localization
+
+## Load Translations
+
+```{r function-load_translations}
+#' Load translation dictionary
+#'
+#' @return List containing translations for all supported languages
+#' @keywords internal
+#' @filename localisation
+
+load_translations <- function() {
+  yaml_file <- system.file("i18n/translations.yaml", package = "stancer")
+  rlang::try_fetch(
+    yaml::read_yaml(yaml_file),
+    error = function(e) cli::cli_abort("Tranlsations not found.")
+  )
+}
+```
+
+## Available Languages
+
+```{r function-stancer_available_languages}
+#' Get available languages for stancer
+#'
+#' @return Character vector of supported language codes
+#' @filename localisation
+#' @export
+
+stancer_available_languages <- function() {
+  names(load_translations())
+}
+```
+
+```{r examples-stancer_available_languages}
+stancer_available_languages()
+```
+
+## Localisation Helper
+
+```{r function-l}
+#' Get localised string
+#'
+#' @param language Target language code
+#' @param caption_id Translation key
+#' @param case Optional second level key (e.g., 'gen', 'dat', 'likert')
+#'
+#' @return Character string with translation
+#' @keywords internal
+#' @filename localisation
+
+l <- function(language, caption_id, case = NULL) {
+  # Check lanuage
+  if (!language %in% stancer_available_languages()) {
+    abort(
+      "Language '{language}' not available. \\
+            Use: {.val {stancer_available_languages()}}"
+    )
+  }
+
+  dict <- load_translations()
+
+  # Проверка ключа
+  if (!caption_id %in% names(dict[[language]])) {
+    cli::cli_abort(
+      "Caption ID '{caption_id}' not found ",
+      "in language '{language}'"
+    )
+  }
+
+  translation <- dict[[language]][[caption_id]]
+
+  if (!is.null(case)) {
+    case <- rlang::arg_match(
+      case,
+      c('gen', 'dat', 'categorical', 'numeric', 'likert'),
+      multiple = FALSE
+    )
+
+    if (!is.list(translation)) {
+      cli::cli_abort(
+        "Case '{case}' not supported for '{caption_id}' ",
+        "(expected list with cases)"
+      )
+    }
+
+    if (!case %in% names(translation)) {
+      cli::cli_abort(
+        "Case '{case}' not found for '{caption_id}'"
+      )
+    }
+
+    translation[[case]]
+  } else {
+    if (is.list(translation)) {
+      cli::cli_abort(
+        "Case required for '{caption_id}'. ",
+        "Available: {.val {names(translation)}}"
+      )
+    }
+
+    translation
+  }
+}
+```
+
+## Check Translations
+
+```{r function-stancer_check_translations}
+#' Check translation dictionary structure
+#'
+#' @description
+#' Validates and displays information about the translation dictionary,
+#' including available languages, number of keys, and keys with case variants.
+#' Useful for verifying translation completeness and structure.
+#'
+#' @details
+#' This function performs the following checks:
+#' - Lists all available languages in the dictionary
+#' - Counts total translation keys per language
+#' - Identifies keys with case variants (e.g., 'gen', 'dat', 'likert')
+#'
+#' The function prints a formatted report to the console and returns
+#' invisibly TRUE.
+#'
+#' @return
+#' Invisibly `TRUE`. Called for side effects (printing to console).
+#'
+#' @keywords internal
+#' @filename localisation
+#' @export
+
+stancer_check_translations <- function() {
+  dict <- load_translations()
+
+  cat("Available languages:", paste(names(dict), collapse = ", "), "\n\n")
+
+  for (language in names(dict)) {
+    cat("Language:", language, "\n")
+    cat("  Keys:", length(dict[[language]]), "\n")
+
+    # Проверка структуры
+    cases_keys <- sapply(dict[[language]], function(x) is.list(x))
+    if (any(cases_keys)) {
+      cat("  Keys with cases:", sum(cases_keys), "\n")
+    }
+    cat("\n")
+  }
+
+  invisible(TRUE)
+}
+```
+
+```{r examples-stancer_check_translations}
+stancer_check_translations()
+```
+
+## Type to Term Conversion
+
+```{r function-type_to_term}
+#' Convert analysis type to human-readable term
+#'
+#' @param type Analysis type: "object" or "claim"
+#' @param language Language code
+#'
+#' @return Character string with localised term
+#' @keywords internal
+#' @filename localisation
+
+type_to_term <- function(
+    type = c('object', 'claim'),
+    language = stancer_available_languages()
+) {
+  type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
+  language <- rlang::arg_match(language, stancer_available_languages(), multiple = FALSE)
+
+  switch(
+    type,
+    object = l(language, 'object', 'dat'),
+    claim = l(language, 'claim', 'dat')
+  )
+}
+```
+
+---
+
+# Scale System
+
+## Scale Definitions
+
+```{r function-type_stance}
+#' Define stance scales for structured data extraction
+#'
+#' @description
+#' These functions define scale types for extracting stance information
+#' using `ellmer::parallel_chat_structured()`. They serve as scale definitions
+#' for the ellmer structured data extraction tool.
+#'
+#' @details
+#' These functions create type definitions compatible with ellmer's
+#' structured extraction framework:
+#'
+#' - `type_stance_categorical()`: Defines a three-point categorical scale
+#'   (Positive, Negative, Neutral)
+#' - `type_stance_numeric()`: Defines a continuous numeric scale
+#'   (typically -1 to 1)
+#' - `type_stance_likert()`: Defines a five-point Likert scale
+#'   (Strongly Disagree to Strongly Agree)
+#'
+#' Each function reads a description from a file using
+#' `ellmer::interpolate_file()`, allowing for dynamic content insertion
+#' and template rendering.
+#'
+#' @param description_file Path to a file containing the scale description.
+#'   The file may include template variables that will be interpolated
+#'   using `ellmer::interpolate_file()`.
+#'
+#' @return
+#' A type definition object compatible with `ellmer::parallel_chat_structured()`.
+#' - `type_stance_categorical()` returns an enum type with three values
+#' - `type_stance_numeric()` returns a numeric type
+#' - `type_stance_likert()` returns an enum type with five values
+#'
+#' @seealso
+#' [ellmer::parallel_chat_structured()] for using these type definitions
+#' in structured data extraction tasks.
+#'
+#'
+#' @keywords internal
+#' @filename scales
+
+#' @rdname type_stance
+type_stance_categorical <- function(description_file) {
+  ellmer::type_enum(
+    values = c('Negative', 'Neutral', 'Positive'),
+    description = ellmer::interpolate_file(description_file)
+  )
+}
+
+#' @rdname type_stance
+type_stance_numeric <- function(description_file) {
+  ellmer::type_number(
+    description = ellmer::interpolate_file(description_file)
+  )
+}
+
+#' @rdname type_stance
+type_stance_likert <- function(description_file) {
+  ellmer::type_enum(
+    values = c(
+      'Strongly Disagree',
+      'Disagree',
+      'Neutral',
+      'Agree',
+      'Strongly Agree'
+    ),
+    description = ellmer::interpolate_file(description_file)
+  )
+}
+```
+
+## Data Schema
+
+```{r function-type_stance_analysis}
+#' Define stance analysis schema for structured extraction
+#'
+#' @description
+#' Creates a complete schema for stance analysis that combines a stance scale
+#' with an explanation field. This schema is designed for use with
+#' `ellmer::parallel_chat_structured()` to extract structured stance analysis results.
+#'
+#' @details
+#' This function creates a composite type object containing:
+#' - **stance:** A scale type (categorical, numeric, or Likert) for the stance value
+#' - **explanation:** A string field for the stance classification explanation
+#'
+#' The function supports three scale types:
+#' - `"numeric"`: Continuous scale (typically -1 to 1)
+#' - `"likert"`: Five-point Likert scale (Strongly Disagree to Strongly Agree)
+#' - `"categorical"`: Three-point categorical scale (Positive, Negative, Neutral)
+#'
+#' The explanation field description is automatically localised based on the
+#' provided language code using the `'explanation_description'` translation key.
+#'
+#' @param language Language code for localisation (e.g., "en", "uk", "ru").
+#'   Must be one of the available languages in the stancer translation dictionary.
+#'
+#' @param description_file Path to a file containing the stance scale description.
+#'   The file may include template variables that will be interpolated
+#'   using `ellmer::interpolate_file()`.
+#'
+#' @param scale Type of stance scale to use. One of:
+#'   - `"numeric"`: Continuous numeric scale
+#'   - `"likert"`: Five-point Likert scale
+#'   - `"categorical"`: Three-point categorical scale (default)
+#'
+#' @return
+#' A type object compatible with `ellmer::parallel_chat_structured()`.
+#' The returned object is a composite type containing:
+#' - `stance`: A scale type definition
+#' - `explanation`: A string type definition with localised description
+#'
+#' @seealso
+#' [type_stance_categorical()], [type_stance_numeric()], [type_stance_likert()]
+#' for individual scale definitions.
+#'
+#' [ellmer::parallel_chat_structured()] for using this schema in
+#' structured data extraction tasks.
+#'
+#' [l()] for translation lookup.
+#'
+#'
+#' @keywords internal
+#' @filename scales
+type_stance_analysis <- function(language, description_file, scale = "categorical") {
+  # Validate scale parameter
+  scale <- rlang::arg_match(scale, c("numeric", "likert", "categorical"))
+
+  # A schema for the structured output
+  type_stance <- switch(
+    scale,
+    numeric = type_stance_numeric(description_file),
+    likert = type_stance_likert(description_file),
+    type_stance_categorical(description_file)
+  )
+
+  ellmer::type_object(
+    stance = type_stance,
+    explanation = ellmer::type_string(
+      description = l(language, 'explanation_description')
+    )
+  )
+}
+```
+
+---
+
+# Prompt and Task Preparation
+
+## Prompts
+
+```{r function-templates_collect}
+#' Collect prompt template file paths
+#'
+#' @description
+#' Scans specified and default directories to locate Markdown template files
+#' for a given language and scale type. It follows a priority order: user-defined
+#' directory first, followed by the package's internal prompt directories.
+#'
+#' @param prompts_dir Character string. Path to a custom directory containing
+#'   prompt templates. Can be `NULL`.
+#' @param language Character string. Language code (e.g., "en", "uk").
+#' @param scale Character string. The rating scale type: "categorical",
+#'   "numeric", or "likert".
+#'
+#' @return A named list where keys represent template roles (e.g.,
+#'   `system-linguist`, `scale_description`) and values are absolute file paths.
+#'
+#' @keywords internal
+#' @filename prompting
+templates_collect <- function(prompts_dir, language, scale) {
+  # 1. Determine default package directories
+  DEFAULT_PROMPTS_DIR <- system.file(
+    file.path('prompts', language),
+    package = 'stancer'
+  )
+  # Fall-back for development environment
+  # if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
+  #   DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
+  # }
+
+  # 2. Filter existing directories
+  search_dirs <- c(prompts_dir, DEFAULT_PROMPTS_DIR) |>
+    Filter(f = \(x) !is.null(x) && dir.exists(x))
+
+  if (length(search_dirs) == 0) {
+    cli::cli_abort(
+      "No prompt directories found for language {.val {language}}"
+    )
+  }
+
+  # 3. Define the set of required role templates
+  role_templates <- expand.grid(
+    call = c('system', 'user'),
+    role = c('linguist', 'domain', 'interpreter', 'debater', 'judger'),
+    stringsAsFactors = FALSE
+  ) |>
+    glue::glue_data('{call}-{role}.md') |>
+    as.character() |>
+    as.list()
+
+  # Clean names (e.g., "system-linguist.md" -> "system-linguist")
+  names(role_templates) <- gsub('\\.md', '', role_templates)
+
+  # 4. Combine with scale-specific and helper files
+  # Note: scale is now 'categorical', 'numeric', or 'likert'
+  prompt_files <- list(
+    scale_description = glue::glue('description-{scale}.md'),
+    scale_guide = glue::glue('guide-{scale}.md'),
+    reference_resolution = 'reference-resolution.md',
+    claim_resolution = 'claim-resolution.md'
+  ) |>
+    c(role_templates)
+
+  prompt_templates <- list()
+
+  # 5. Resolve paths with priority
+  for (name in names(prompt_files)) {
+    filename <- prompt_files[[name]]
+
+    found <- FALSE
+    for (dir in search_dirs) {
+      filepath <- file.path(dir, filename)
+      if (file.exists(filepath)) {
+        prompt_templates[[name]] <- filepath
+        found <- TRUE
+        break
+      }
+    }
+
+    if (!found) {
+      cli::cli_abort(
+        "Prompt {.file {filename}} not found for language {.val {language}}"
+      )
+    }
+  }
+
+  prompt_templates
+}
+```
+
+```{r function-prompts_prepare}
+#' Prepare system and user prompts for a given role
+#'
+#' @description
+#' Loads and interpolates system and user prompt templates for a specific role
+#' in the stance analysis workflow. This function prepares the prompts that
+#' guide the language model's behaviour for different analysis stages.
+#'
+#' @details
+#' The function supports five distinct roles in the stance analysis pipeline:
+#'
+#' - **linguist**: Performs linguistic analysis of statements
+#' - **domain**: Provides domain-specific expertise and context
+#' - **interpreter**: Interprets social media content
+#' - **debater**: Presents arguments and counter-arguments
+#' - **judger**: Makes final stance judgements (supports additional options)
+#'
+#' For the `judger` role, additional instructions can be included:
+#' - `add_reference_resolution`: Include instructions for resolving references
+#' - `add_claim_resolution`: Include instructions for resolving propositions
+#'
+#' The function performs the following operations:
+#' 1. Validates the role and language parameters
+#' 2. Loads template files for the specified role
+#' 3. Interpolates templates with provided variables (via `...`)
+#' 4. Validates that prompts are non-empty after interpolation
+#'
+#' Templates are loaded using `ellmer::interpolate_file()`, which allows
+#' for dynamic content insertion and template variable rendering.
+#'
+#' @param role Role for which to prepare prompts. One of:
+#'   - `"linguist"`: Linguistic analysis
+#'   - `"domain"`: Domain expertise
+#'   - `"interpreter"`: Text interpretation
+#'   - `"debater"`: Argument presentation
+#'   - `"judger"`: Final judgement
+#'
+#' @param templates A list containing template file paths. Expected keys:
+#'   - `system-{role}`: Path to system prompt template
+#'   - `user-{role}`: Path to user prompt template
+#'   - `reference_resolution`: Path to reference resolution instructions (for judger)
+#'   - `claim_resolution`: Path to claim resolution instructions (for judger)
+#'   - `scale_guide`: Path to scale guide (for judger)
+#'
+#' @param language Language code for localisation (e.g., "en", "uk", "ru").
+#'   Defaults to the first available language. Must be one of the available
+#'   languages in the stancer translation dictionary.
+#'
+#' @param add_reference_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving references in texts.
+#'   Defaults to `FALSE`.
+#'
+#' @param add_claim_resolution Logical. For the `judger` role only.
+#'   If `TRUE`, includes instructions for resolving propositions.
+#'   Defaults to `FALSE`.
+#'
+#' @param ... Additional named arguments passed to `ellmer::interpolate_file()`.
+#'   These allow for template variable substitution (e.g., `target = "climate change"`).
+#'
+#' @return
+#' A list with two elements:
+#' - `system`: Character string containing the system prompt
+#' - `task`: Character string containing the user prompt
+#'
+#' Both strings are non-empty after interpolation.
+#'
+#' @seealso
+#' [ellmer::interpolate_file()] for template interpolation details.
+#'
+#' @keywords internal
+#' @filename prompting
+prompts_prepare <- function(
+    role,
+    templates,
+    language = stancer_available_languages(),
+    add_reference_resolution = FALSE,
+    add_claim_resolution = FALSE,
+    ...
+) {
+  role <- rlang::arg_match(
+    role,
+    values = c(
+      'linguist', 'domain', 'interpreter', 'debater', 'judger'
+    ),
+    multiple = FALSE
+  )
+  language <- rlang::arg_match(
+    language,
+    stancer_available_languages(),
+    multiple = FALSE
+  )
+
+  # A lot of work for a judger
+  if (role == 'judger') {
+    if (add_reference_resolution) {
+      reference_instruction <- ellmer::interpolate_file(
+        templates$reference_resolution
+      )
+    } else {
+      reference_instruction <- ''
+    }
+
+    if (add_claim_resolution) {
+      claim_instruction <- ellmer::interpolate_file(
+        templates$claim_resolution
+      )
+    } else {
+      # Default settings
+      claim_instruction <- ''
+    }
+
+    scale_guide <- ellmer::interpolate_file(templates$scale_guide)
+  }
+
+  template_system <- templates[[glue::glue('system-{role}')]]
+  template_user <- templates[[glue::glue('user-{role}')]]
+
+  # Check for file existence
+  if (!file.exists(template_system)) {
+    abort(
+      c(
+        "System template not found: {.file {template_system}}",
+        "i" = "Available roles: {.val linguist}, {.val domain}, {.val interpreter}, {.val debater}, {.val judger}"
+      )
+    )
+  }
+  if (!file.exists(template_user)) {
+    abort(
+      c(
+        "User template not found: {.file {template_user}}",
+        "i" = "Available roles: {.val linguist}, {.val domain}, {.val interpreter}, {.val debater}, {.val judger}"
+      )
+    )
+  }
+
+  prompts <- list(
+    system = ellmer::interpolate_file(template_system, ...),
+    task = ellmer::interpolate_file(template_user, ...)
+  )
+
+  # Check for user prompt existence
+  if (is.null(prompts$task)) {
+    abort("User prompt is NULL for role {.val {role}}")
+  }
+
+  # Check for empty strings
+  if (any(nchar(prompts$system) == 0)) {
+    abort("System prompt is empty after interpolation for role {.val {role}}")
+  }
+  if (any(nchar(prompts$task) == 0)) {
+    abort("User prompt is empty after interpolation for role {.val {role}}")
+  }
+
+  prompts
+}
+```
+
+```{r examples-prompts-prepare}
+# Prepare prompts for linguistic analysis
+# templates <- list(
+#   `system-linguist` = "prompts/en/system-linguist.md",
+#   `user-linguist` = "prompts/en/user-linguist.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "linguist",
+#   templates = templates,
+#   language = "en",
+#   target = "climate change",
+#   text = c("some text", "and more"),
+#   target_type = "the object"
+# )
+# 
+# # Prepare prompts for domain expert
+# templates <- list(
+#   `system-domain` = "prompts/en/system-domain.md",
+#   `user-domain` = "prompts/en/user-domain.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "domain",
+#   templates = templates,
+#   language = "en",
+#   target = "artificial intelligence",
+#   text = "AI will replace all human jobs",
+#   target_type = "the object",
+#   domain = "technology and employment expert"
+# )
+# 
+# # Prepare prompts for judger with additional options
+# templates <- list(
+#   `system-judger` = "prompts/en/system-judger.md",
+#   `user-judger` = "prompts/en/user-judger.md",
+#   reference_resolution = "prompts/en/reference-resolution.md",
+#   claim_resolution = "prompts/en/claim-resolution.md",
+#   scale_guide = "prompts/en/guide-likert.md"
+# )
+# 
+# prompts <- stancer:::prompts_prepare(
+#   role = "judger",
+#   templates = templates,
+#   language = "en",
+#   add_reference_resolution = TRUE,
+#   add_claim_resolution = TRUE,
+#   target = "Climate change is a real concern",
+#   text = "Global warming is a serious threat",
+#   target_type = "the claim",
+#   FavourResponse = "This text is almost a paraphrase of the target claim",
+#   AgainstResponse = "This is most probably a parody of climate speeches.",
+#   NeutralResponse = "Context is missing and we should be sceptical"
+# )
+```
+
+## Tasks
+
+```{r function-tasks_validate}
+#' Validate task configuration
+#'
+#' @description
+#' Internal helper to ensure that the generated tasks (user prompts) meet
+#' the expected criteria after interpolation. It checks for correct length,
+#' data type, and ensures no empty strings were produced.
+#'
+#' @param tasks A character vector of interpolated tasks.
+#' @param expected_length The number of tasks expected (usually matching the number of input texts).
+#'
+#' @return Invisibly TRUE if validation passes or throws an error if tasks are not a character vector, have incorrect length, or contain empty strings.
+#'
+#' @keywords internal
+#' @filename prompting
+
+tasks_validate <- function(tasks, expected_length) {
+  rlang::try_fetch(
+    ellmer:::check_number_whole(expected_length, min = 1),
+    error = function(e) abort("Wrong {.arg expected_length} argument.")
+  )
+
+  if (any(is.na(tasks))) {
+    abort("User prompt list contains missing values")
+  }
+
+  if (length(tasks) != expected_length || !is.character(tasks)) {
+    abort(
+      c(
+        "User prompt interpolation returned unexpected results",
+        "i" = "Consider checking variable placeholders in user templates"
+      )
+    )
+  }
+
+  if (any(nchar(tasks) == 0)) {
+    abort(
+      c(
+        "User prompt is empty after interpolation",
+        "i" = "Check that all required variables are provided"
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+```
+
+```{r function-tasks_prepare}
+#' Prepare chat objects and tasks for execution
+#'
+#' @description
+#' Organises the final structure for parallel execution by cloning the base
+#' chat object and pairing it with the corresponding system and user prompts.
+#'
+#' @details
+#' This function handles two main scenarios for system prompts:
+#' 1. A single system prompt applied to all tasks.
+#' 2. A vector of system prompts matching the number of texts (e.g., when
+#'    different domain experts are assigned to different texts).
+#'
+#' The function clones the `chat_base` for each system prompt to ensure
+#' environment isolation during parallel processing. It also performs
+#' validation on the user tasks using [tasks_validate()].
+#'
+#' @param chat_base An `ellmer::Chat` object used as a template.
+#' @param prompts A list containing `system` (character vector) and
+#'   `task` (character vector) prompts, typically from [prompts_prepare()].
+#' @param n_texts Integer. The expected number of texts/tasks to process.
+#'
+#' @return A list with two elements:
+#' - `chats`: A list of cloned and configured `ellmer::Chat` objects.
+#' - `tasks`: A character vector of user prompts (tasks).
+#'
+#' @keywords internal
+#' @filename prompting
+
+tasks_prepare <- function(chat_base, prompts, n_texts) {
+  # General case when there may be > 1 system prompts
+  ## (e.g. multiple domain roles)
+  chats <- lapply(
+    prompts$system,
+    function(system_prompt) {
+      # Each time clone the base chat
+      chat <- chat_base$clone(deep = TRUE)
+      # Set a system prompt
+      chat$set_system_prompt(system_prompt)
+      return(chat)
+    }
+  )
+
+  if (length(chats) != 1 & length(chats) != n_texts) {
+    abort(
+      "Length of system and user prompts must match {.val {n_texts}}, \\
+            got {.val {length(chats)}}"
+    )
+  }
+
+  tasks_validate(prompts$task, n_texts)
+
+  list(
+    chats = chats,
+    tasks = prompts$task
+  )
+}
+```
+
+---
+
+# Expert Analysis
+
+## Prepare Expert Chats
+
+```{r function-prepare_expert_chats}
+#' Prepare chat configurations for expert agents
+#'
+#' @description
+#' A high-level internal helper that orchestrates the preparation of expert
+#' sessions for specific analysis roles (linguist, domain expert, or interpreter).
+#'
+#' @details
+#' This function acts as a bridge between the input data and the execution
+#' engine. It extracts necessary variables from the `inputs` list,
+#' interpolates the corresponding templates using [prompts_prepare()],
+#' and then initialises the chat objects via [tasks_prepare()].
+#'
+#' @param inputs A list containing all necessary data for prompt interpolation:
+#'   - `texts`: Corpus of documents to analyse.
+#'   - `targets`: Character vector of analysis targets.
+#'   - `target_types`: Character vector of localised target types.
+#'   - `prompt_templates`: List of paths to markdown template files.
+#'   - `language`: Character string (e.g., "en").
+#'   - `domain_roles`: (Optional) Character vector for the domain expert role.
+#' @param chat_base An `ellmer::Chat` object used as a template for cloning.
+#' @param expert_role Character. One of `"linguist"`, `"domain"`, or `"interpreter"`.
+#'
+#' @return A list containing:
+#' - `chats`: A list of configured `ellmer::Chat` objects.
+#' - `tasks`: A character vector of interpolated user prompts.
+#'
+#' @keywords internal
+#' @importFrom rlang arg_match
+#' @filename agents
+
+prepare_expert_chats <- function(
+    inputs,
+    chat_base,
+    expert_role = c('linguist', 'domain', 'interpreter')
+) {
+  expert_role <- rlang::arg_match(
+    expert_role,
+    c('linguist', 'domain', 'interpreter'),
+    multiple = FALSE
+  )
+
+  # Load instructions for the expert
+  prompts <- with(
+    inputs,
+    prompts_prepare(
+      expert_role,
+      templates = prompt_templates,
+      language = language,
+      text = texts,
+      target = targets,
+      target_type = target_types,
+      domain = domain_roles
+    )
+  )
+
+  tasks_prepare(chat_base, prompts, length(inputs$texts))
+}
+```
+
+## Execute Role
+
+```{r function-execute_role}
+#' Execute expert role analysis
+#'
+#' @description
+#' An internal worker that handles the execution of LLM requests for a
+#' specific expert role. It switches between parallel execution
+#' (when a single system prompt is shared) and sequential execution (when
+#' each task requires a unique system prompt).
+#'
+#' @param expert_role Character. The role to execute (e.g., "linguist").
+#' @param inputs A list containing texts, targets, and prompt templates.
+#' @param chat_base An `ellmer::Chat` object used as a template.
+#' @param info Character. A descriptive label for logging and error messages.
+#' @param rpm Integer. Requests per minute limit for parallel execution.
+#' @param verbose Logical. Whether to print progress messages to the console.
+#'
+#' @return A character vector of LLM responses, one for each input text.
+#'
+#' @keywords internal
+#' @importFrom ellmer parallel_chat_text
+#' @filename agents
+
+execute_role <- function(
+    expert_role,
+    inputs,
+    chat_base,
+    info,
+    rpm = 500,
+    verbose = TRUE
+) {
+  tasks <- prepare_expert_chats(
+    inputs,
+    chat_base = chat_base,
+    expert_role = expert_role
+  )
+
+  if (verbose) cat('    \U1F4CA', glue::glue('{info}...'), '\n')
+
+  # If multiple system_prompts, e.g
+  if (length(tasks$chats) > 1) {
+    # Use sequential analysis
+    results <- vapply(
+      seq_along(tasks$tasks),
+      function(task_i) {
+        chat <- tasks$chats[[task_i]]
+        result <- chat$chat(tasks$tasks[[task_i]], echo = 'none')
+        if (!is.character(result)) {
+          abort("Unexpected results in {info} {task_i}")
+        }
+        result
+      },
+      character(1)
+    ) |> catch(tolower(info))
+  } else {
+    # Use parallel analysis
+    results <- ellmer::parallel_chat_text(
+      # Unpack the Chat object
+      chat = tasks$chats[[1]],
+      prompts = tasks$tasks,
+      rpm = rpm
+    ) |> catch(tolower(info))
+  }
+
+  if (!is.character(results) || (length(results) != length(inputs$texts))) {
+    abort(
+      c(
+        "Unexpected results in {info}",
+        "x" = "Input and output lengths differ: {length(inputs$texts)} vs {length(results)}"
+      )
+    )
+  }
+
+  results
+}
+```
+
+---
+
+# Debate Stage
+
+## Prepare Debater Chats
+
+```{r function-prepare_debater_chats}
+#' Prepare chat configurations for debate agents
+#'
+#' @description
+#' Prepares the prompts and chat objects for Stage 2 (Debate). It takes the
+#' linguistic, domain, and social media analysis results from Stage 1 and
+#' injects them into the 'debater' templates.
+#'
+#' @param stance Character. The stance label to be debated for (used in prompts).
+#' @param inputs A list containing:
+#'   - `texts`, `targets`, `target_types`, `language`, `prompt_templates`
+#'   - `analysis_results`: A list with `linguistic`, `domain`, and `social_media`
+#'     vectors from Stage 1.
+#' @param chat_base An `ellmer::Chat` object.
+#'
+#' @return A list with two elements:
+#'   - `chats`: A list containing a single `ellmer::Chat` object.
+#'   - `tasks`: A character vector of user prompts for each input text.
+#'
+#' @keywords internal
+#' @filename agents
+
+prepare_debater_chats <- function(
+    stance,
+    inputs,
+    chat_base
+) {
+  # Prepare prompts using all context from Stage 1
+  prompts <- with(
+    inputs,
+    prompts_prepare(
+      'debater',
+      language = language,
+      templates = prompt_templates,
+      text = texts,
+      target_type = target_types,
+      target = targets,
+      stance = stance,
+      LingResponse = analysis_results$linguistic,
+      ExpertResponse = analysis_results$domain,
+      UserResponse = analysis_results$social_media
+    )
+  )
+
+  # Stage 2 requires a consistent system prompt across all items
+  if (length(prompts$system) > 1) {
+    abort(
+      c(
+        "Multiple system prompts are not allowed at stage 2",
+        "i" = "Consider checking variable placeholders in system templates"
+      )
+    )
+  }
+
+  tasks_prepare(chat_base, prompts, length(inputs$texts))
+}
+```
+
+---
+
+# Judgement Stage
+
+## Prepare Judger Chats
+
+```{r function-prepare_judger_chats}
+#' Prepare chat configurations for judge agent
+#'
+#' @param inputs Input texts
+#' @param chat_base Base chat configuration
+#'
+#' @return List of chat configurations
+#' @keywords internal
+#' @filename agents
+
+prepare_judger_chats <- function(
+    inputs,
+    chat_base
+) {
+  prompts <- with(
+    inputs,
+    prompts_prepare(
+      'judger',
+      language = language,
+      templates = prompt_templates,
+      text = texts,
+      target_type = target_types,
+      target = targets,
+      FavourResponse = debate_results$positive,
+      AgainstResponse = debate_results$negative,
+      NeutralResponse = debate_results$neutral,
+      # Additional instructions based on object types
+      add_reference_resolution = 'object' %in% types,
+      add_claim_resolution = 'claim' %in% types
+    )
+  )
+
+  if (length(prompts$system) > 1) {
+    abort(
+      c(
+        "Multiple system prompts are not allowed at stage 3",
+        "i" = "Consider checking variable placeholders in system templates"
+      )
+    )
+  }
+
+  tasks_prepare(chat_base, prompts, length(inputs$texts))
+}
+```
+
+---
+
+# Pipeline Stages
+
+## Stage 1: Parallel Analysis
+
+```{r function-stage_1_parallel_analysis}
+#' Execute Stage 1: Parallel expert analysis
+#'
+#' @description
+#' Orchestrates the first stage of the analysis pipeline. It validates the
+#' input data, then sequentially triggers three distinct expert analyses:
+#' linguistic, domain-specific, and social media interpretation.
+#'
+#' @details
+#' Although the function name contains "parallel", it refers to the
+#' independent nature of the expert roles (they don't depend on each
+#' other's output). Each role is executed via [execute_role()], which
+#' may itself use parallel API requests.
+#'
+#' @param inputs A list containing all necessary data:
+#'   - `texts`: Character vector to analyse.
+#'   - `targets`: Character vector of targets.
+#'   - `target_types`: Character vector of target types.
+#'   - `prompt_templates`: List of template paths.
+#'   - `language`: Character string.
+#'   - `domain_roles`: Character vector for the domain expert.
+#' @param chat_base An `ellmer::Chat` object used as a template.
+#' @param verbose Logical. Whether to print stage progress and timing.
+#' @param rpm Integer. Requests per minute limit for API calls.
+#'
+#' @return The `inputs` list with an additional element `analysis_results`,
+#'   which is a named list containing character vectors:
+#'   - `linguistic`: Results from the linguist role.
+#'   - `domain`: Results from the domain expert role.
+#'   - `social_media`: Results from the interpreter role.
+#'
+#' @keywords internal
+#' @importFrom tictoc tic toc
+#' @importFrom glue glue
+#' @filename stages
+
+stage_1_parallel_analysis <- function(
+    inputs,
+    chat_base,
+    verbose = TRUE,
+    rpm = 500
+) {
+  # Validate input structure
+  required_fields <- c(
+    'prompt_templates',
+    'language',
+    'texts',
+    'targets',
+    'target_types',
+    'domain_roles'
+  )
+  validate_fields(inputs, required_fields, 'expert analysis')
+
+  n <- length(inputs$texts)
+
+  tictoc::tic('Stage 1')
+  if (verbose) {
+    cat(
+      glue::glue("\U23F3 Stage 1: Expert analysis ({n} items)..."),
+      "\n"
+    )
+  }
+
+  expert_roles <- c('linguist', 'domain', 'interpreter')
+  expert_info <- c(
+    linguist = 'Linguistic analysis',
+    domain = 'Domain expert analysis',
+    interpreter = 'Social media interpretation'
+  )
+  analysis_results <- lapply(
+    expert_roles,
+    function(role) {
+      execute_role(
+        role,
+        inputs = inputs,
+        chat_base = chat_base,
+        info = expert_info[[role]],
+        rpm = rpm,
+        verbose = verbose
+      )
+    }
+  )
+  names(analysis_results) <- c('linguistic', 'domain', 'social_media')
+
+  # The result is a list of character vectors of length length(texts)
+  ## One vector for each role
+  inputs[['analysis_results']] <- analysis_results
+
+  tictoc::toc(func.toc = stage_complete, quiet = !verbose)
+
+  inputs
+}
+```
+
+## Stage 2: Parallel Debates
+
+```{r function-stage_2_parallel_debates}
+#' Execute Stage 2: Parallel agent debates
+#'
+#' @param inputs Input texts
+#' @param chat_base Chat configuration
+#' @param verbose Show progress
+#' @param rpm Requests per minute limit
+#'
+#' @return Debate results
+#' @keywords internal
+#' @filename stages
+
+stage_2_parallel_debates <- function(
+    inputs,
+    chat_base,
+    verbose = TRUE,
+    rpm = 500
+) {
+  # Validate input structure
+  required_fields <- c(
+    'prompt_templates',
+    'language',
+    'texts',
+    'targets',
+    'target_types',
+    'analysis_results',
+    'scale'
+  )
+  validate_fields(inputs, required_fields, 'stance debates')
+
+  n <- length(inputs$texts)
+
+  # Ensure Stage 1 results are present and valid
+  validate_inputs(inputs$analysis_results$linguistic, n, 'Linguistic analysis')
+  validate_inputs(inputs$analysis_results$domain, n, 'Domain expert analysis')
+  validate_inputs(inputs$analysis_results$social_media, n, 'Social media analysis')
+
+  tictoc::tic('Stage 2')
+  if (verbose) {
+    cat(
+      glue::glue(
+        "\U23F3 Stage 2: Parallel debates ({n} items \U00D7 3 stances)..."),
+      "\n"
+    )
+  }
+
+  stance_labels <- c('positive', 'negative', 'neutral')
+
+  # 1. Prepare tasks for each stance
+  debater_tasks <- lapply(
+    stance_labels,
+    function(stance_label) {
+      prepare_debater_chats(
+        stance = l(
+          inputs$language,
+          glue::glue('stance_{stance_label}'),
+          inputs$scale
+        ),
+        inputs = inputs,
+        chat_base = chat_base
+      )
+    }
+  )
+  names(debater_tasks) <- stance_labels
+
+  # 2. Execute parallel debates for each stance group
+  inputs[['debate_results']] <- lapply(
+    debater_tasks,
+    function(debater_task) {
+      ellmer::parallel_chat_text(
+        chat = debater_task$chats[[1]],
+        prompts = debater_task$tasks,
+        rpm = rpm
+      ) |> catch('stance debates')
+    }
+  )
+
+  tictoc::toc(func.toc = stage_complete, quiet = !verbose)
+
+  inputs
+}
+```
+
+## Stage 3: Parallel Judgement
+
+```{r function-stage_3_parallel_judgement}
+#' Execute Stage 3: Judge synthesis
+#'
+#' @description
+#' Orchestrates the final stage of the analysis. It takes the results from all
+#' three debate branches and uses a 'judge' agent to produce a structured
+#' final stance judgement. This stage uses structured output to ensure the
+#' results follow a predefined schema.
+#'
+#' @param inputs A list containing:
+#'   - `texts`, `targets`, `types`, `target_types`, `language`, `prompt_templates`, `scale`.
+#'   - `debate_results`: Results from Stage 2.
+#' @param chat_base An `ellmer::Chat` object.
+#' @param verbose Logical. Whether to print progress and timing.
+#' @param rpm Integer. Requests per minute limit for API calls.
+#' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
+#'
+#' @return The `inputs` list with an additional element `judgement_results`,
+#'   containing the structured stance analysis.
+#'
+#' @keywords internal
+#' @importFrom tictoc tic toc
+#' @importFrom glue glue
+#' @importFrom ellmer parallel_chat_structured
+#' @importFrom cli cli_warn
+#' @filename stages
+
+stage_3_parallel_judgement <- function(
+    inputs,
+    chat_base,
+    verbose = TRUE,
+    rpm = 500,
+    ...
+) {
+  n <- length(inputs$texts)
+
+  # Validate input structure
+  required_fields <- c(
+    'prompt_templates',
+    'language',
+    'texts',
+    'targets',
+    'types',
+    'target_types',
+    'debate_results',
+    'scale'
+  )
+  validate_fields(inputs, required_fields, 'stance decision')
+
+  # Ensure Stage 2 results are present and valid
+  validate_inputs(inputs$debate_results$positive, n, 'Positive stance debates')
+  validate_inputs(inputs$debate_results$negative, n, 'Negative stance debates')
+  validate_inputs(inputs$debate_results$neutral, n, 'Neutral stance debates')
+
+  tictoc::tic('Stage 3')
+  if (verbose) {
+    cat(glue::glue("\U23F3 Stage 3: Parallel judgement ({n} items)..."), "\n")
+  }
+
+  # 1. Prepare tasks for the judge
+  judger_tasks <- prepare_judger_chats(
+    inputs,
+    chat_base = chat_base
+  )
+
+  if (verbose) cat("    \u2696\UFE0F Running parallel judgements...\n")
+
+  # 2. Execute structured parallel judgements
+  inputs[['judgement_results']] <- ellmer::parallel_chat_structured(
+    chat = judger_tasks$chats[[1]],
+    prompts = judger_tasks$tasks,
+    type = type_stance_analysis(
+      inputs$language,
+      inputs$prompt_templates$scale_description,
+      inputs$scale
+    ),
+    rpm = rpm,
+    convert = TRUE,
+    ...
+  ) |> catch('making final judgement')
+
+  # 3. Check for failed judgements (NA values)
+  if (any(is.na(inputs$judgement_results$stance))) {
+    n_na <- sum(is.na(inputs$judgement_results$stance))
+    cli::cli_warn(
+      "{n_na} item{?s} returned NA stance",
+      call = rlang::expr(llm_stance())
+    )
+  }
+
+  tictoc::toc(func.toc = stage_complete, quiet = !verbose)
+
+  inputs
+}
+```
+
+---
+
+# Main Analysis Function
+
+## LLM Stance Detection
+
+### GENERIC FUNCTION
+
+```{r function-llm_stance}
+#' Detect stance using COLA framework
+#'
+#' @description
+#' `llm_stance()` implements a multi-stage "Collaborative rOle-infused LLM-based
+#' Agents" (COLA) framework to detect stance in text towards a specific target
+#' (entity or proposition).
+#' It supports character vectors and data frames (compatible with `mall` style).
+#'
+#' @param x Input text(s) as a character vector or a data.frame containing (any of) `text`, `target`, `type`, `domain_role` or `language` arguments.
+#' @param ... Additional arguments passed to `ellmer::parallel_chat_structured`.
+#'
+#' @return A `stance_result` object (for character method) or a modified
+#'   data frame (for data.frame method).
+#'
+#' @export
+llm_stance <- function(x, ...) {
+  UseMethod("llm_stance")
+}
+```
+
+### CHARACTER METHOD
+
+```{r function-llm_stance.character}
+#' @rdname llm_stance
+#' @description
+#' The `character` method performs the full three-stage analysis:
+#' 1. **Expert Analysis**: Linguistic, domain, and social media perspectives.
+#' 2. **Stance Debates**: Parallel generation of arguments for, against, and neutral.
+#' 3. **Judgement**: Final synthesis into a structured stance score.
+#'
+#' @details
+#' ## Chat Configuration Recommendations
+#' For optimal results, consider the following requirements for each stage:
+#' \itemize{
+#'   \item \strong{Expert Analysis (Stage 1)}: Requires excellent real-world
+#'   awareness and reasoning. Structured output is NOT required.
+#'   \item \strong{Stance Debates (Stage 2)}: Requires creativity and strong
+#'   writing skills. Structured output is NOT required.
+#'   \item \strong{Stance Judgement (Stage 3)}: Requires large context width,
+#'   superior reasoning, and \strong{MUST} support structured output (JSON mode).
+#' }
+#' 
+#' @param target Character. The entity or claim the stance is directed at.
+#' @param chat_base An `ellmer::Chat` object or a list of up to 3 such objects.
+#' @param type Analysis type: "object" (entity-based) or "claim" (proposition-based).
+#' @param language Language code (e.g., "en", "ru"). If `NULL`, auto-detected.
+#' @param scale Stance scale: "categorical", "numeric", or "likert".
+#' @param domain_role Optional specific role for the domain expert (e.g., "historian").
+#' @param prompts_dir Optional path to custom prompt templates.
+#' @param verbose Logical. Show progress and summary table.
+#' @param rpm Integer. Global requests per minute limit.
+#'
+#' @return S3 object of class "stance_result" with:
+#'   - summary: data.frame with results
+#'   - analysis: expert analysis results
+#'   - debates: debate results
+#'   - judgements: final judgements
+#'   - metadata: processing metadata
+#' ⁠@importFrom ellmer is_chat
+#' @importFrom cli cli_abort cli_warn
+#' @importFrom rlang is_character is_scalar_character is_list arg_match is_installed
+#' @importFrom glue glue
+#' @importFrom tibble as_tibble
+#' @importFrom tictoc tic toc
+#' @export
+llm_stance.character <- function(
+    x,
+    target,
+    chat_base,
+    type = c('object'),
+    language = stancer_available_languages(),
+    scale = c('categorical', 'numeric', 'likert'),
+    domain_role = NULL,
+    prompts_dir = NULL,
+    verbose = TRUE,
+    rpm = 20,
+    ...
+) {
+  ## Validation ----
+  tictoc::tic('Analysis')
+
+  # Validate text and target
+  text <- x
+  validate_character(text)
+  validate_character(target)
+
+  n <- length(text)
+
+  # Validate type
+  if (rlang::is_character(type)) {
+    if (length(type == 2) != n) {
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
+    } else {
+      type <- rlang::arg_match(type, c('object', 'claim'), multiple = TRUE)
+    }
+  } else {
+    cli::cli_abort(
+      "{.arg type} must be a character vector, got {.cls {class(type)}}"
+    )
+  }
+
+  # Validate language
+  if (is.null(language) || length(language) > 1) {
+    if (rlang::is_installed("cld2")) {
+      language <- cld2::detect_language(text[[1]], lang_code = TRUE)
+      cli::cli_warn(
+        "The analysis language was automatically detected: {.val {language}}"
+      )
+    }
+  }
+  if (rlang::is_scalar_character(language)) {
+    if (!language %in% stancer_available_languages()) {
+      cli::cli_abort(
+        c(
+          "Language {.val {language}} not available",
+          "i" = "Use one of: {.val {stancer_available_languages()}}"
+        )
+      )
+    }
+  } else {
+    cli::cli_abort(
+      "{.arg language} must be a character scalar, got \
+            {.cls {class(language)}} of length {.val {length(language)}}"
+    )
+  }
+
+  # Validate scale
+  scale <- tolower(scale) # Can write ‘Likert’
+  scale <- rlang::arg_match(scale, c('categorical', 'numeric', 'likert'))
+
+  # Validate domain_role
+  if (is.null(domain_role)) {
+    domain_role <- switch(
+      language,
+      uk = 'sociologist', # 'соціолог',
+      ru = 'sociologist', # 'социолог',
+      'social commentator'
+    )
+  } else {
+    if (!rlang::is_character(domain_role) || length(domain_role) < 1) {
+      cli::cli_abort(
+        "{.arg domain_role} must be a character vector, got {.cls {class(domain_role)}}"
+      )
+    }
+    if (!(length(domain_role) == 1 || length(domain_role) == n)) {
+      cli::cli_abort(
+        c(
+          "{.arg domain_role} must have length 1 or {n} (same as {.arg text})",
+          "x" = "Got {length(domain_role)}"
+        )
+      )
+    }
+  }
+
+  if (length(domain_role) > 1) {
+    cli::cli_warn(
+      "Multiple domain roles detected. Parallel execution is unsupported."
+    )
+  }
+
+  ### Chat Validation ----
+  # Validate and arrange the `chat_base` argument across stages
+  #
+  # Recommendations (see vignette and docstrings):
+  # 1. Expert analysis (Stage 1):
+  #     - Excellent real-world awareness
+  #     - Decent reasoning skills
+  #     - Sufficient writing skills
+  #     - Context width depends on task
+  #     - Structured output: NOT required
+  # 2. Stance debates (Stage 2):
+  #     - Sufficient context width
+  #     - Creative and writing skills
+  #     - Structured output: NOT required
+  # 3. Stance decision (Stage 3):
+  #     - Large context width
+  #     - Excellent reasoning skills
+  #     - Excellent real-world awareness
+  #     - Structured output: REQUIRED
+  chats <- if (rlang::is_list(chat_base)) {
+    # Validate each element
+    for (i in seq_along(chat_base)) {
+      if (!ellmer:::is_chat(chat_base[[i]])) {
+        cli::cli_abort(
+          "Element {i} of {.arg chat_base} is not an {.cls ellmer::Chat} object"
+        )
+      }
+    }
+
+    # Arrange based on list length
+    indices <- switch(
+      length(chat_base),
+      `1` = c(1, 1, 1),
+      `2` = c(1, 1, 2),
+      `3` = c(1, 2, 3),
+      cli::cli_abort(
+        c(
+          "{.arg chat_base} must have 1, 2, or 3 elements",
+          "x" = "You provided {length(chat_base)}"
+        )
+      )
+    )
+    lapply(indices, \(i) chat_base[[i]]$clone(deep = TRUE))
+
+  } else if (ellmer:::is_chat(chat_base)) {
+    rep(list(chat_base$clone(deep = TRUE)), times = 3)
+
+  } else {
+    cli::cli_abort(
+      c(
+        "{.arg chat_base} must be an {.cls ellmer::Chat} object or \
+                a list of 1-3 {.cls ellmer::Chat} objects",
+        "x" = "Got {.cls {class(chat_base)}}"
+      )
+    )
+  }
+
+  ## Prompts ----
+  prompt_templates <- templates_collect(prompts_dir, language, scale)
+
+  ## Preparation ----
+  target <- recycle_arg(target, n)
+  type <- recycle_arg(type, n)
+
+  target_types <- sapply(type, type_to_term, language = language)
+
+  inputs <- list(
+    texts = text,
+    targets = target,
+    types = type,
+    target_types = target_types,
+    language = language,
+    scale = scale,
+    domain_roles = domain_role,
+    prompt_templates = prompt_templates
+  )
+
+  if (verbose) {
+    cat("\n")
+    cat(strrep("=", 70), "\n")
+    cat(glue::glue("\U1F50D STANCE ANALYSIS - Processing {n} item(s)"), "\n")
+    cat(strrep("=", 70), "\n\n")
+    cat(glue::glue("Types: {paste(unique(type), collapse = ', ')}"), "\n")
+    cat(glue::glue("Language: {language}"), "\n")
+    cat(
+      glue::glue("Domain roles: {paste(unique(domain_role), collapse = ', ')}"),
+      "\n"
+    )
+    cat("\n")
+  }
+
+  ## Analysis ----
+  output <- inputs |>
+    stage_1_parallel_analysis(chats[[1]], verbose, rpm) |>
+    validate_stage('Stage 1 (Expert analysis)') |>
+    stage_2_parallel_debates(chats[[2]], verbose, rpm) |>
+    validate_stage('Stage 2 (Stance debates)') |>
+    stage_3_parallel_judgement(chats[[3]], verbose, rpm, ...)
+
+  if (is.null(output$judgement_results) || nrow(output$judgement_results) != n) {
+    cli::cli_abort("Final stance judgement returned unexpected results")
+  }
+
+  # Additional postprocessing of quantitative and Likert stance labels
+  if (scale == 'numeric') {
+    # output$judgement_results$stance <- truncate(
+    #     (output$judgement_results$stance - 50) / 50,
+    #     -1,
+    #     1
+    # )
+  } else if (scale == 'likert') {
+    # Rename as proper noun
+    scale <- 'Likert'
+    output$judgement_results$stance <- factor(
+      output$judgement_results$stance,
+      levels = c(
+        'Strongly Disagree',
+        'Disagree',
+        'Neutral',
+        'Agree',
+        'Strongly Agree'
+      ),
+      ordered = TRUE
+    )
+  } else if (scale == "categorical") {
+    output$judgement_results$stance <- factor(
+      as.character(output$judgement_results$stance),
+      levels = c('Negative', 'Neutral', 'Positive'),
+      ordered = FALSE
+    )
+  }
+
+  ## Postprocessing ----
+  summary_df <- data.frame(
+    text = text,
+    target = target,
+    target_type = type,
+    language = language
+  ) |>
+    cbind(output$judgement_results) |>
+    tibble::as_tibble()
+
+  if (verbose) {
+    cat("\U1F4CA Summary Table:\n")
+    print(summary_df)
+    cat("\n")
+    cat(strrep("=", 70), "\n")
+    toc <- tictoc::toc(func.toc = stage_complete, quiet = FALSE)
+    cat(strrep("=", 70), "\n\n")
+  } else {
+    toc <- tictoc::toc(func.toc = stage_complete, quiet = TRUE)
+  }
+
+  ## Return ----
+  structure(
+    list(
+      summary = summary_df,
+      analysis = output$analysis_results,
+      debates = output$debate_results,
+      judgements = output$judgement_results,
+      metadata = list(
+        n_total = n,
+        n_processed = nrow(output$judgement_results),
+        n_failed = sum(is.na(output$judgement_results$stance)),
+        scale = scale,
+        language = language,
+        types = unique(type),
+        domain_role = domain_role,
+        model = unique(sapply(chats, \(chat) chat$get_model())),
+        elapsed = toc$toc - toc$tic,
+        timestamp = Sys.time()
+      )
+    ),
+    class = c("stance_result", "list")
+  )
+}
+```
+
+```{r examples-llm_stance.character}
+# result <- llm_stance(
+#   x = "I support renewable energy",
+#   target = "renewable energy",
+#   chat_base = chat_model,
+#   type = "object",
+#   scale = "categorical"
+# )
+```
+
+### DATA.FRAME METHOD
+
+```{r function-llm_stance.data.frame}
+#' @rdname llm_stance
+#' @param text The text column (if `x` is a data.frame) or character vector to analyse.
+#' @param .output_col Name of the column where results will be stored.
+#'
+#' @importFrom cli cli_abort cli_warn cli_inform
+#' @importFrom rlang is_null as_name
+#' @filename methods
+#' @export
+
+llm_stance.data.frame <- function(
+    x,
+    text = NULL,
+    target = NULL,
+    type = NULL,
+    domain_role = NULL,
+    language = NULL,
+    chat_base,
+    scale = 'categorical',
+    prompts_dir = NULL,
+    verbose = TRUE,
+    rpm = 20,
+    .output_col = '.stance',
+    ...
+) {
+  data <- x
+
+  # Tidy evaluation
+  text_quo <- rlang::enquo(text)
+  target_quo <- rlang::enquo(target)
+  type_quo <- rlang::enquo(type)
+  language_quo <- rlang::enquo(language)
+  domain_role_quo <- rlang::enquo(domain_role)
+
+  # Validate and get argument vectors
+  text_vec <- catch_eval(text_quo, data)
+  target_vec <-  catch_eval(target_quo, data)
+  type_vec <- safe_eval(type_quo, data)
+  language_vec <- safe_eval(language_quo, data)
+  domain_role_vec <- safe_eval(domain_role_quo, data)
+
+  # Fall-back to the defaults
+  if (rlang::is_null(type_vec)) {
+    type_vec <- c('object', 'claim')
+  }
+
+  if (rlang::is_null(language_vec)) {
+    cli::cli_warn(
+      c("Cannot find {.arg language} in data or environment")
+    )
+  }
+
+  # Names for messages
+  text_name <- rlang::as_name(text_quo)
+  target_name <- rlang::as_name(target_quo)
+
+  if (verbose) {
+    cli::cli_inform(
+      c(
+        "i" = "Processing {.val {text_name}} and {.val {target_name}} columns"
+      )
+    )
+  }
+
+  result <- llm_stance(
+    x = text_vec,
+    target = target_vec,
+    type = type_vec,
+    language = language_vec,
+    domain_role = domain_role_vec,
+    chat_base = chat_base,
+    scale = scale,
+    prompts_dir = prompts_dir,
+    verbose = verbose,
+    rpm = rpm,
+    ...
+  )
+
+  # Augment `data`
+  n_rows <- nrow(data)
+  n_results <- nrow(result$summary)
+
+  if (n_results != n_rows) {
+    cli::cli_warn(
+      c(
+        "Result has {n_results} rows, but data has {n_rows} rows",
+        "i" = "Returning only matching rows"
+      )
+    )
+    result$summary <- result$summary[seq_len(min(n_rows, n_results)), ]
+  }
+
+  data[[.output_col]] <- c(result$summary$stance, rep(NA, n_rows - n_results))
+
+  attr(data, 'llm_stance_metadata') <- result$metadata
+
+  if (verbose) {
+    cli::cli_inform(
+      c(
+        "v" = "Analysis complete!",
+        "i" = "Results added to {.val {(.output_col)}} column"
+      )
+    )
+  }
+
+  return(data)
+}
+```
+
+---
+
+# Result Inspection and Display
+
+## Print Method
+
+```{r function-print.stance_result}
+#' Print stance_result object
+#'
+#' @description
+#' A custom print method for `stance_result` objects. It displays a formatted
+#' header with processing metadata (items processed, language, models used, etc.)
+#' followed by the summary table of stance results.
+#' @param x A `stance_result` object.
+#' @param ... Additional arguments to [base::print.data.frame()] or other `print` methods for the summary table.
+#'
+#' @return The input object (invisibly).
+#' @importFrom glue glue
+#' @filename methods
+#' @export
+
+print.stance_result <- function(x, ...) {
+    cat("Stance Analysis Result\n")
+    cat(strrep("=", 60), "\n")
+    cat(
+        glue::glue("Processed: {x$metadata$n_processed}/{x$metadata$n_total} items"),
+        "\n"
+    )
+    cat(glue::glue("Failed: {x$metadata$n_failed} items"), "\n")
+    cat(glue::glue("Scale: {x$metadata$scale}"), "\n")
+    cat(glue::glue("Language: {x$metadata$language}"), "\n")
+    cat(glue::glue("Types: {paste(x$metadata$types, collapse = ', ')}"), "\n")
+    cat(
+        glue::glue(
+            "Domain role(s): {paste(x$metadata$domain_role, collapse = ', ')}"
+        ),
+        "\n"
+    )
+    cat(
+        glue::glue("Model(s) used: {paste(x$metadata$model, collapse = ', ')}"),
+        "\n"
+    )
+    cat(glue::glue("Time elapsed: {round(x$metadata$elapsed, 2)} sec"), "\n")
+    cat(glue::glue("Timestamp: {x$metadata$timestamp}"), "\n")
+    cat(strrep("=", 60), "\n\n")
+
+    cat("Summary Table:\n")
+    print(x$summary, ...)
+
+    invisible(x)
+}
+```
+
+```{r examples-print.stance_result}
+# result <- llm_stance(
+#   x = "R is smart and tidy",
+#   target = "R programming language",
+#   chat_base = ellmer::chat_anthropic()
+# )
+# print(result)
+```
+
+## Summary Method
+
+```{r function-summary.stance_result}
+#' Summarise stance_result object
+#'
+#' @description
+#' Provides a statistical summary of the stance analysis results. It displays
+#' the frequency distribution of detected stances and a cross-tabulation
+#' of stances by target entity or proposition.
+#' @param object A `stance_result` object.
+#' @param ... Additional arguments passed to [base::print.table()].
+#'
+#' @return The input object (invisibly).
+#' @filename methods
+#' @export
+
+summary.stance_result <- function(object, ...) {
+    cat("Stance Distribution:\n")
+    print(table(object$summary$stance))
+    cat("\n")
+
+    cat("By Target:\n")
+    print(table(object$summary$target, object$summary$stance), ...)
+
+    invisible(object)
+}
+```
+
+## Data Frame Conversion
+
+```{r function-as.data.frame.stance_result}
+#' Convert stance_result to data frame
+#'
+#' @description
+#' Extracts the summary table from a `stance_result` object and returns it as
+#' a data frame. This allows for easy further analysis using standard R tools.
+#' @param x A `stance_result` object
+#' @param row.names Optional NULL or a character vector giving the row names for the data frame. Missing values are not allowed.
+#' @param optional Logical. If TRUE, setting row names and converting column names to syntactic names is optional.
+#' @param ... Additional arguments passed to [base::as.data.frame()].
+#'
+#' @return A Data frame
+#' @filename methods
+#' @export
+
+as.data.frame.stance_result <- function(
+    x,
+    row.names = NULL,
+    optional = FALSE,
+    ...
+) {
+  x$summary
+}
+```
+
+## Inspect Method
+
+```{r function-inspect}
+#' Inspect method for `stance_result` objects
+#'
+#' @param x A `stance_result` object.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @return The input object (invisibly).
+#' @filename methods
+#' @export
+#' @rdname inspect.stance_result
+
+inspect <- function(x, ...) {
+  UseMethod("inspect")
+}
+```
+
+```{r function-inspect.stance_result}
+#' Inspect stance_result contents
+#'
+#' @description
+#' A diagnostic tool to peer into the internal steps of the stance analysis.
+#' It allows to view metadata, raw linguistic/expert/veteran analysis,
+#' internal debates between agents, or the final explanation for a specific row.
+#'
+#' @param what Character. Primary level: 'metadata', 'analysis', 'debates', or 'explanation'.
+#' @param within Optional character. Secondary level (e.g., 'linguistic' for analysis, 'positive' for debates).
+#' @param index Integer. The row index of the text item to inspect.
+#'
+#' @filename methods
+#' @export
+
+inspect.stance_result <- function(
+    x,
+    what = c('metadata', 'analysis', 'debates', 'explanation'),
+    within = NULL,
+    index = 1,
+    ...
+) {
+
+  what <- match.arg(what)
+  ellmer:::check_number_whole(index, min = 1)
+
+  switch(
+    what,
+
+    #### Inspect Metadata ----
+    metadata = {
+      cat("\n", cli::rule("METADATA"), "\n\n")
+      yaml::write_yaml(x$metadata, file = stdout())
+    },
+
+    #### Inspect Analysis Results ----
+    analysis = {
+      if (is.null(within)) {
+        cat("\n", cli::rule("ANALYSIS - Available sections"), "\n\n")
+        available <- names(x$analysis)
+        cat("Available sections:\n")
+        for (section in available) {
+          cat(
+            cli::col_cyan(
+              sprintf("  \U2022 %s\n", section)
+            )
+          )
+        }
+        cat(
+          "\nUsage: ",
+          "inspect(result, what = 'analysis', ",
+          "within = 'section_name')\n\n",
+          sep = ""
+        )
+      } else {
+        if (!within %in% names(x$analysis)) {
+          cli::cli_abort(
+            "Section '{within}' not found in analysis. ",
+            "Available: {.val {names(x$analysis)}}"
+          )
+        }
+
+        if (index > length(x$analysis)) {
+          cli::cli_abort(
+            "Index {index} out of bounds. ",
+            "Analysis has {length(x$analysis)} rows."
+          )
+        }
+
+        content <- x$analysis[[within]][index]
+
+        cat(
+          "\n",
+          cli::rule(
+            sprintf(
+              "ANALYSIS: %s [row %d]",
+              within,
+              index
+            )
+          ),
+          "\n\n"
+        )
+
+        if (is.na(content) || is.null(content)) {
+          cat(cli::col_yellow("(empty)\n\n"))
+        } else {
+          cat(ellmer::interpolate(content), fill = TRUE)
+          cat("\n")
+        }
+      }
+    },
+
+    #### Inspect Stance Debates ----
+    debates = {
+      if (is.null(within)) {
+        cat("\n", cli::rule("DEBATES - Available sections"), "\n\n")
+        available <- names(x$debates)
+        cat("Available sections:\n")
+        for (section in available) {
+          cat(
+            cli::col_cyan(
+              sprintf("  \U2022 %s\n", section)
+            )
+          )
+        }
+        cat(
+          "\nUsage: ",
+          "inspect(result, what = 'debates', ",
+          "within = 'section_name')\n\n",
+          sep = ""
+        )
+      } else {
+        if (!within %in% names(x$debates)) {
+          cli::cli_abort(
+            "Section '{within}' not found in debates. ",
+            "Available: {.val {names(x$debates)}}"
+          )
+        }
+
+        if (index > length(x$debates)) {
+          cli::cli_abort(
+            "Index {index} out of bounds. ",
+            "Debates has {length(x$debates)} rows."
+          )
+        }
+
+        content <- x$debates[[within]][index]
+
+        cat(
+          "\n",
+          cli::rule(
+            sprintf(
+              "DEBATES: %s [row %d]",
+              within,
+              index
+            )
+          ),
+          "\n\n"
+        )
+
+        if (is.na(content) || is.null(content)) {
+          cat(cli::col_yellow("(empty)\n\n"))
+        } else {
+          cat(ellmer::interpolate(content), fill = TRUE)
+          cat("\n")
+        }
+      }
+    },
+
+    #### Inspect Explanation ----
+    explanation = {
+      if (!is.null(within)) {
+        cli::cli_warn(
+          c(
+            'Stance result explanation has no sections.',
+            'Unused argument: {.arg within}'
+          )
+        )
+      }
+
+      if (index > length(x$summary$explanation)) {
+        cli::cli_abort(
+          c(
+            "Index {index} out of bounds. ",
+            "The data have {nrow(x$summary)} rows."
+          )
+        )
+      }
+
+      content <- x[['summary']][['explanation']][index]
+
+      cat(
+        "\n",
+        cli::rule(
+          sprintf("EXPLANATION: [row %d]", index)
+        ),
+        "\n\n"
+      )
+
+      if (is.na(content) || is.null(content)) {
+        cat(cli::col_yellow("(empty)\n\n"))
+      } else {
+        cat(ellmer::interpolate(content), fill = TRUE)
+        cat("\n")
+      }
+    }
+  )
+
+  invisible(x)
+}
+```
+
+---
+
+# Inflate
+
+```{r development-inflate, eval=FALSE}
+fusen::inflate(
+  pkg = here::here(),
+  flat_file = here::here('dev', 'flat_stancer.Rmd'),
+  codecov = TRUE,
+  clean = TRUE,
+  vignette_name = "Stance Analysis with ellmer",
+  open_vignette = FALSE
+)
+```
+
+```{r development-document, eval = FALSE}
+# usethis::use_logo('../hex-stancer.png')
+# usethis::use_lifecycle_badge('Experimental')
+devtools::build_readme()
+```
