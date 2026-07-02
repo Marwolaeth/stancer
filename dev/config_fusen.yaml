@@ -10,6 +10,7 @@ flat_stancer.Rmd:
   - R/prompting.R
   - R/stages.R
   - R/verbose.R
+  - R/frameworks.R
   - R/scales.R
   - R/validate.R
   tests:
@@ -21,6 +22,7 @@ flat_stancer.Rmd:
   - tests/testthat/test-prompting.R
   - tests/testthat/test-agents.R
   - tests/testthat/test-stages.R
+  - tests/testthat/test-frameworks.R
   - tests/testthat/test-llm_stance.R
   - tests/testthat/test-methods.R
   vignettes: vignettes/stance-analysis-with-ellmer.Rmd

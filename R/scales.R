@@ -54,7 +54,7 @@
 type_stance_analysis <- function(language, description_file, scale = "categorical") {
   # Validate scale parameter
   scale <- rlang::arg_match(scale, c("numeric", "likert", "categorical"))
-
+  
   # A schema for the structured output
   type_stance <- switch(
     scale,
@@ -62,7 +62,7 @@ type_stance_analysis <- function(language, description_file, scale = "categorica
     likert = type_stance_likert(description_file),
     type_stance_categorical(description_file)
   )
-
+  
   ellmer::type_object(
     stance = type_stance,
     explanation = ellmer::type_string(

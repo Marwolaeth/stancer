@@ -3,7 +3,7 @@
 test_that("validate_fields returns invisible TRUE when all fields are present", {
   inputs <- list(texts = "some text", language = "en", targets = "target")
   required <- c("texts", "language")
-
+  
   expect_true(validate_fields(inputs, required, "test_input"))
   expect_invisible(validate_fields(inputs, required, "test_input"))
 })
@@ -19,7 +19,7 @@ test_that("validate_fields throws error when input is NULL", {
 test_that("validate_fields identifies missing fields", {
   inputs <- list(a = 1, b = 2)
   required <- c("a", "b", "c", "d")
-
+  
   # The error message should list the missing fields: c, d
   expect_error(
     validate_fields(inputs, required, "content analysis results"),
@@ -45,7 +45,7 @@ test_that("validate_fields validates its own arguments", {
 test_that("validate_fields works with named vectors", {
   inputs <- c(field1 = "val1", field2 = "val2")
   expect_true(validate_fields(inputs, "field1"))
-
+  
   expect_error(
     validate_fields(inputs, "field3", "input"),
     regexp = "Input for input misses required fields: `field3`",

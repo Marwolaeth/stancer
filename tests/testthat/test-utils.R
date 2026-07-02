@@ -307,11 +307,11 @@ test_that('abort in nested function', {
   inner_func <- function() {
     abort("Error from inner function")
   }
-
+  
   outer_func <- function() {
     inner_func()
   }
-
+  
   expect_error(
     outer_func(),
     "Error from inner function",
@@ -381,12 +381,12 @@ test_that('multiple abort calls create separate errors', {
     abort("Error 1"),
     error = function(e) e
   )
-
+  
   error2 <- tryCatch(
     abort("Error 2"),
     error = function(e) e
   )
-
+  
   expect_true(grepl("Error 1", conditionMessage(error1)))
   expect_true(grepl("Error 2", conditionMessage(error2)))
   expect_false(identical(error1, error2))

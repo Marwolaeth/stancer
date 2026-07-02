@@ -183,12 +183,12 @@ test_that('stancer_check_translations output is consistent', {
 
 test_that('stancer_check_translations handles all languages equally', {
   output <- capture.output(stancer_check_translations())
-
+  
   # Проверяем, что каждый язык имеет свою секцию
   en_count <- sum(grepl("Language: en", output))
   uk_count <- sum(grepl("Language: uk", output))
   ru_count <- sum(grepl("Language: ru", output))
-
+  
   expect_equal(en_count, 1)
   expect_equal(uk_count, 1)
   expect_equal(ru_count, 1)
@@ -255,11 +255,11 @@ test_that('type_to_term returns character string', {
 # Test 9: type_to_term works with all available languages
 test_that('type_to_term works with all available languages', {
   available_langs <- stancer_available_languages()
-
+  
   for (lang in available_langs) {
     result_obj <- type_to_term(type = "object", language = lang)
     result_stmt <- type_to_term(type = "claim", language = lang)
-
+    
     expect_type(result_obj, "character")
     expect_type(result_stmt, "character")
     expect_length(result_obj, 1)
@@ -271,6 +271,6 @@ test_that('type_to_term works with all available languages', {
 test_that('type_to_term returns different terms for different types', {
   object_term <- type_to_term(type = "object", language = "en")
   claim_term <- type_to_term(type = "claim", language = "en")
-
+  
   expect_false(object_term == claim_term)
 })

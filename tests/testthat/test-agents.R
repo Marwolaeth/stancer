@@ -28,15 +28,15 @@ test_that("prepare_expert_chats successfully prepares linguist chats", {
       `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
     )
   )
-
+  
   # Skip if files don't exist in the environment
   skip_if_not(all(file.exists(unlist(inputs$prompt_templates))))
-
+  
   chat_base <- MockChat$new()
-
+  
   # 2. Execute
   result <- prepare_expert_chats(inputs, chat_base, "linguist")
-
+  
   # 3. Verify
   expect_type(result, "list")
   expect_named(result, c("chats", "tasks"))
@@ -58,12 +58,12 @@ test_that("prepare_expert_chats successfully prepares domain chats", {
       `user-domain` = file.path(prompts_dir, 'user-domain.md')
     )
   )
-
+  
   skip_if_not(all(file.exists(unlist(inputs$prompt_templates))))
-
+  
   chat_base <- MockChat$new()
   result <- prepare_expert_chats(inputs, chat_base, "domain")
-
+  
   expect_length(result$tasks, 1)
   # Check if domain variable was correctly interpolated in system prompt
   # (Assuming the template uses {domain} placeholder)
@@ -73,7 +73,7 @@ test_that("prepare_expert_chats successfully prepares domain chats", {
 test_that("prepare_expert_chats throws error for invalid role", {
   inputs <- list(texts = "test")
   chat_base <- MockChat$new()
-
+  
   expect_error(
     prepare_expert_chats(inputs, chat_base, "invalid_role"),
     regexp = "must be one of",
@@ -88,7 +88,7 @@ test_that("prepare_expert_chats fails if inputs list is missing required element
     prompt_templates = list()
   )
   chat_base <- MockChat$new()
-
+  
   expect_error(prepare_expert_chats(inputs, chat_base, "linguist"))
 })
 
@@ -105,12 +105,12 @@ test_that("prepare_expert_chats handles multiple system prompts (if prompts_prep
       `user-domain` = file.path(prompts_dir, 'user-domain.md')
     )
   )
-
+  
   skip_if_not(all(file.exists(unlist(inputs$prompt_templates))))
-
+  
   chat_base <- MockChat$new()
   result <- prepare_expert_chats(inputs, chat_base, "domain")
-
+  
   # If prompts_prepare returns 2 system prompts, tasks_prepare should return 2 chats
   # Note: This depends on how prompts_prepare handles vectorised 'domain'
   expect_named(result, c("chats", "tasks"))
@@ -153,17 +153,17 @@ test_that("execute_role uses parallel execution when there is one chat object", 
       tasks = c("Content Analysis Prompt 1", "Content Analysis Prompt 2")
     )
   )
-
+  
   mock_parallel <- mockery::mock(c("Response A", "Response B"))
   mockery::stub(execute_role, "ellmer::parallel_chat_text", mock_parallel)
-
+  
   inputs <- list(texts = c("T1", "T2"))
-
+  
   # 2. Execute
   res <- execute_role(
     "linguist", inputs, MockChat$new(), "Testing Parallel", verbose = FALSE
   )
-
+  
   # 3. Verify
   expect_equal(res, c("Response A", "Response B"))
   mockery::expect_called(mock_parallel, 1)
@@ -179,7 +179,7 @@ test_that("execute_role uses sequential execution when there are multiple chats"
   # 1. Set-up Mocks
   chat1 <- MockChat$new()
   chat2 <- MockChat$new()
-
+  
   mockery::stub(
     execute_role,
     "prepare_expert_chats",
@@ -188,14 +188,14 @@ test_that("execute_role uses sequential execution when there are multiple chats"
       tasks = c("Task 1", "Task 2")
     )
   )
-
+  
   inputs <- list(texts = c("T1", "T2"))
-
+  
   # 2. Execute
   res <- execute_role(
     "domain", inputs, MockChat$new(), "Testing Sequential", verbose = FALSE
   )
-
+  
   # 3. Verify
   expect_equal(res, c("Response 1", "Response 1"))
   # For every Chat, there is only one response
@@ -207,12 +207,12 @@ test_that("execute_role throws error if output length is mismatched", {
     "prepare_expert_chats",
     list(chats = list(MockChat$new()), tasks = c("P1", "P2"))
   )
-
+  
   # Parallel returns only 1 response for 2 inputs
   mockery::stub(execute_role, "ellmer::parallel_chat_text", "Single Response")
-
+  
   inputs <- list(texts = c("T1", "T2"))
-
+  
   expect_error(
     execute_role("linguist", inputs, MockChat$new(), "Error Test", verbose = FALSE),
     regexp = "Input and output lengths differ",
@@ -227,7 +227,7 @@ test_that("execute_role prints progress message when verbose is TRUE", {
     list(chats = list(MockChat$new()), tasks = "P1")
   )
   mockery::stub(execute_role, "ellmer::parallel_chat_text", "Result A")
-
+  
   expect_output(
     execute_role(
       "linguist", list(texts = "T1"), MockChat$new(), "MyInfo", verbose = TRUE
@@ -301,20 +301,20 @@ test_that("prepare_debater_chats correctly passes Stage 1 results to prompts_pre
       social_media = "Social Media Analysis"
     )
   )
-
+  
   # 2. Mock prompts_prepare to verify arguments
   mock_prompts <- mockery::mock(list(
     system = "System Prompt",
     user = "User Prompt"
   ))
   mockery::stub(prepare_debater_chats, "prompts_prepare", mock_prompts)
-
+  
   # Mock tasks_prepare to return a standard structure
   mockery::stub(prepare_debater_chats, "tasks_prepare", list(chats = list(1), tasks = "T"))
-
+  
   # 3. Execute
   prepare_debater_chats("negative", inputs, MockChat$new())
-
+  
   # 4. Verify arguments passed to prompts_prepare
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_equal(args[[1]], "debater")
@@ -330,9 +330,9 @@ test_that("prepare_debater_chats aborts if multiple system prompts are generated
     system = c("System 1", "System 2"),
     user = c("User 1", "User 2")
   ))
-
+  
   inputs <- list(texts = c("T1", "T2"), analysis_results = list())
-
+  
   # Check for our custom abort message
   expect_error(
     prepare_debater_chats("con", inputs, MockChat$new()),
@@ -345,10 +345,10 @@ test_that("prepare_debater_chats returns tasks_prepare output on success", {
     system = "Single System",
     user = "User Prompt"
   ))
-
+  
   expected_output <- list(chats = list("MockChatObject"), tasks = "Final Prompt")
   mockery::stub(prepare_debater_chats, "tasks_prepare", expected_output)
-
+  
   res <- prepare_debater_chats("neutral", list(texts = "T1"), MockChat$new())
   expect_equal(res, expected_output)
 })
@@ -358,7 +358,7 @@ test_that("prepare_debater_chats fails with multiple system prompts", {
     system = c("System Prompt 1", "System Prompt 2"),
     user = "User Prompt"
   ))
-
+  
   expect_error(
     prepare_debater_chats("positive", list(texts = "T1"), MockChat$new()),
     "Multiple system prompts are not allowed at stage 2",
@@ -393,7 +393,7 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
       neutral = "Neu Debate"
     )
   )
-
+  
   # 2. Mock prompts_prepare to verify arguments
   mock_prompts <- mockery::mock(
     list(
@@ -407,10 +407,10 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
     "tasks_prepare",
     list(chats = list(1), tasks = "T")
   )
-
+  
   # 3. Execute
   prepare_judger_chats(inputs, MockChat$new())
-
+  
   # 4. Verify arguments passed to prompts_prepare
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
@@ -419,7 +419,7 @@ test_that("prepare_judger_chats correctly passes Stage 2 results and flags", {
   expect_equal(args$FavourResponse, "Pos Debate")
   expect_equal(args$AgainstResponse, "Neg Debate")
   expect_equal(args$NeutralResponse, "Neu Debate")
-
+  
   # Verify conditional flags
   expect_false(args$add_reference_resolution)
   expect_true(args$add_claim_resolution)
@@ -430,9 +430,9 @@ test_that("prepare_judger_chats aborts if multiple system prompts are generated"
     system = c("Sys 1", "Sys 2"),
     user = c("User 1", "User 2")
   ))
-
+  
   inputs <- list(texts = c("T1", "T2"), types = "claim", debate_results = list())
-
+  
   expect_error(
     prepare_judger_chats(inputs, MockChat$new()),
     regexp = "Multiple system prompts are not allowed at stage 3",
@@ -447,13 +447,13 @@ test_that("prepare_judger_chats correctly handles claim resolution flag", {
     prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
-
+  
   mock_prompts <- mockery::mock(list(system = "S", user = "U"))
   mockery::stub(prepare_judger_chats, "prompts_prepare", mock_prompts)
   mockery::stub(prepare_judger_chats, "tasks_prepare", list())
-
+  
   prepare_judger_chats(inputs, MockChat$new())
-
+  
   mockery::expect_called(mock_prompts, 1)
   args <- mockery::mock_args(mock_prompts)[[1]]
   expect_false(args$add_reference_resolution)

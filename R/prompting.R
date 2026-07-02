@@ -145,7 +145,7 @@ prompts_prepare <- function(
     stancer_available_languages(),
     multiple = FALSE
   )
-
+  
   # A lot of work for a judger
   if (role == 'judger') {
     if (add_reference_resolution) {
@@ -155,7 +155,7 @@ prompts_prepare <- function(
     } else {
       reference_instruction <- ''
     }
-
+    
     if (add_claim_resolution) {
       claim_instruction <- ellmer::interpolate_file(
         templates$claim_resolution
@@ -164,13 +164,13 @@ prompts_prepare <- function(
       # Default settings
       claim_instruction <- ''
     }
-
+    
     scale_guide <- ellmer::interpolate_file(templates$scale_guide)
   }
-
+  
   template_system <- templates[[glue::glue('system-{role}')]]
   template_user <- templates[[glue::glue('user-{role}')]]
-
+  
   # Check for file existence
   if (!file.exists(template_system)) {
     abort(
@@ -188,17 +188,17 @@ prompts_prepare <- function(
       )
     )
   }
-
+  
   prompts <- list(
     system = ellmer::interpolate_file(template_system, ...),
     task = ellmer::interpolate_file(template_user, ...)
   )
-
+  
   # Check for user prompt existence
   if (is.null(prompts$task)) {
     abort("User prompt is NULL for role {.val {role}}")
   }
-
+  
   # Check for empty strings
   if (any(nchar(prompts$system) == 0)) {
     abort("System prompt is empty after interpolation for role {.val {role}}")
@@ -206,7 +206,7 @@ prompts_prepare <- function(
   if (any(nchar(prompts$task) == 0)) {
     abort("User prompt is empty after interpolation for role {.val {role}}")
   }
-
+  
   prompts
 }
 
@@ -252,16 +252,16 @@ tasks_prepare <- function(chat_base, prompts, n_texts) {
       return(chat)
     }
   )
-
+  
   if (length(chats) != 1 & length(chats) != n_texts) {
     abort(
       "Length of system and user prompts must match {.val {n_texts}}, \\
             got {.val {length(chats)}}"
     )
   }
-
+  
   tasks_validate(prompts$task, n_texts)
-
+  
   list(
     chats = chats,
     tasks = prompts$task
@@ -289,11 +289,11 @@ tasks_validate <- function(tasks, expected_length) {
     ellmer:::check_number_whole(expected_length, min = 1),
     error = function(e) abort("Wrong {.arg expected_length} argument.")
   )
-
+  
   if (any(is.na(tasks))) {
     abort("User prompt list contains missing values")
   }
-
+  
   if (length(tasks) != expected_length || !is.character(tasks)) {
     abort(
       c(
@@ -302,7 +302,7 @@ tasks_validate <- function(tasks, expected_length) {
       )
     )
   }
-
+  
   if (any(nchar(tasks) == 0)) {
     abort(
       c(
@@ -311,7 +311,7 @@ tasks_validate <- function(tasks, expected_length) {
       )
     )
   }
-
+  
   invisible(TRUE)
 }
 
@@ -344,17 +344,17 @@ templates_collect <- function(prompts_dir, language, scale) {
   # if (!dir.exists(DEFAULT_PROMPTS_DIR)) {
   #   DEFAULT_PROMPTS_DIR <- file.path('inst', 'prompts', language)
   # }
-
+  
   # 2. Filter existing directories
   search_dirs <- c(prompts_dir, DEFAULT_PROMPTS_DIR) |>
     Filter(f = \(x) !is.null(x) && dir.exists(x))
-
+  
   if (length(search_dirs) == 0) {
     cli::cli_abort(
       "No prompt directories found for language {.val {language}}"
     )
   }
-
+  
   # 3. Define the set of required role templates
   role_templates <- expand.grid(
     call = c('system', 'user'),
@@ -364,10 +364,10 @@ templates_collect <- function(prompts_dir, language, scale) {
     glue::glue_data('{call}-{role}.md') |>
     as.character() |>
     as.list()
-
+  
   # Clean names (e.g., "system-linguist.md" -> "system-linguist")
   names(role_templates) <- gsub('\\.md', '', role_templates)
-
+  
   # 4. Combine with scale-specific and helper files
   # Note: scale is now 'categorical', 'numeric', or 'likert'
   prompt_files <- list(
@@ -377,13 +377,13 @@ templates_collect <- function(prompts_dir, language, scale) {
     claim_resolution = 'claim-resolution.md'
   ) |>
     c(role_templates)
-
+  
   prompt_templates <- list()
-
+  
   # 5. Resolve paths with priority
   for (name in names(prompt_files)) {
     filename <- prompt_files[[name]]
-
+    
     found <- FALSE
     for (dir in search_dirs) {
       filepath <- file.path(dir, filename)
@@ -393,13 +393,13 @@ templates_collect <- function(prompts_dir, language, scale) {
         break
       }
     }
-
+    
     if (!found) {
       cli::cli_abort(
         "Prompt {.file {filename}} not found for language {.val {language}}"
       )
     }
   }
-
+  
   prompt_templates
 }

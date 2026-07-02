@@ -2,27 +2,27 @@
 
 test_that("templates_collect handles different scale types correctly", {
   sys_dir <- withr::local_tempdir()
-
+  
   # Create files for a 'likert' scale
   file.create(file.path(sys_dir, "description-likert.md"))
   file.create(file.path(sys_dir, "guide-likert.md"))
   file.create(file.path(sys_dir, "reference-resolution.md"))
   file.create(file.path(sys_dir, "claim-resolution.md"))
-
+  
   # Create all other required role files
   roles <- c("system-linguist", "user-linguist", "system-domain", "user-domain",
              "system-interpreter", "user-interpreter", "system-debater",
              "user-debater", "system-judger", "user-judger")
   for (r in roles) file.create(file.path(sys_dir, paste0(r, ".md")))
-
+  
   mockery::stub(templates_collect, "system.file", sys_dir)
   mockery::stub(templates_collect, "dir.exists", TRUE)
-
+  
   # Test Likert
   res_likert <- templates_collect(NULL, "en", "likert")
   expect_match(res_likert$scale_description, "description-likert.md", fixed = TRUE)
   expect_match(res_likert$scale_guide, "guide-likert.md", fixed = TRUE)
-
+  
   # Test Numeric (should fail if files don't exist)
   expect_error(
     templates_collect(NULL, "en", "numeric"),
@@ -33,11 +33,11 @@ test_that("templates_collect handles different scale types correctly", {
 test_that("templates_collect prioritises user directory over system directory", {
   sys_dir <- withr::local_tempdir(pattern = "default")
   user_dir <- withr::local_tempdir(pattern = "custom")
-
+  
   # Create a file in both
   file.create(file.path(sys_dir, "system-judger.md"))
   file.create(file.path(user_dir, "system-judger.md"))
-
+  
   # Create all other required files in sys_dir to satisfy the loop
   all_files <- c(
     "description-categorical.md", "guide-categorical.md",
@@ -47,16 +47,16 @@ test_that("templates_collect prioritises user directory over system directory", 
     "user-debater.md", "user-judger.md"
   )
   for (f in all_files) file.create(file.path(sys_dir, f))
-
+  
   mockery::stub(templates_collect, "system.file", sys_dir)
   mockery::stub(templates_collect, "dir.exists", TRUE)
-
+  
   res <- templates_collect(
     prompts_dir = user_dir,
     language = "en",
     scale = "categorical"
   )
-
+  
   # User file should be selected
   expect_match(res$`system-judger`, user_dir, fixed = TRUE)
   # Other files should still come from sys_dir
@@ -65,9 +65,9 @@ test_that("templates_collect prioritises user directory over system directory", 
 
 test_that("templates_collect throws error if no folders found", {
   user_dir <- withr::local_tempdir(pattern = "custom")
-
+  
   mockery::stub(templates_collect, "length", 0)
-
+  
   expect_error(
     templates_collect(
       prompts_dir = user_dir, language = "en", scale = "likert"
@@ -87,7 +87,7 @@ test_that('prompts_prepare returns list with system and task', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   result <- prompts_prepare(
     role = "linguist",
     templates = templates,
@@ -96,7 +96,7 @@ test_that('prompts_prepare returns list with system and task', {
     text = c("some text", "and more"),
     target_type = "the object"
   )
-
+  
   expect_type(result, "list")
   expect_named(result, c("system", "task"))
 })
@@ -107,7 +107,7 @@ test_that('prompts_prepare returns non-empty strings', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   result <- prompts_prepare(
     role = "linguist",
     templates = templates,
@@ -116,7 +116,7 @@ test_that('prompts_prepare returns non-empty strings', {
     text = c("some text", "and more"),
     target_type = "the object"
   )
-
+  
   expect_type(result$system, "character")
   expect_type(result$task, "character")
   expect_true(nchar(result$system) > 0)
@@ -129,9 +129,9 @@ test_that('prompts_prepare works with character vector for text', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   result <- prompts_prepare(
     role = "linguist",
     templates = templates,
@@ -140,7 +140,7 @@ test_that('prompts_prepare works with character vector for text', {
     text = texts,
     target_type = "the object"
   )
-
+  
   expect_type(result, "list")
   expect_length(result$system, 1)
   expect_length(result$task, length(texts))
@@ -148,7 +148,7 @@ test_that('prompts_prepare works with character vector for text', {
 
 test_that('prompts_prepare works with all valid roles', {
   roles <- c('linguist', 'domain', 'interpreter', 'debater', 'judger')
-
+  
   templates <- list(
     `system-linguist` = file.path(prompts_dir, 'system-linguist.md'),
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md'),
@@ -165,9 +165,9 @@ test_that('prompts_prepare works with all valid roles', {
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   for (r in roles) {
     result <- prompts_prepare(
       role = r,
@@ -185,7 +185,7 @@ test_that('prompts_prepare works with all valid roles', {
       AgainstResponse = "Most likely, this is some kind of malicious mockery",
       NeutralResponse = "Context is missing and we should be sceptical"
     )
-
+    
     expect_type(result, "list")
     expect_named(result, c("system", "task"))
     expect_type(result$system, "character")
@@ -203,7 +203,7 @@ test_that('prompts_prepare rejects invalid role', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   expect_error(
     prompts_prepare(
       role = "invalid_role",
@@ -224,7 +224,7 @@ test_that('prompts_prepare rejects invalid language', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   expect_error(
     prompts_prepare(
       role = "linguist",
@@ -245,7 +245,7 @@ test_that('prompts_prepare handles missing system template', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if(file.exists(templates$`system-linguist`))
-
+  
   expect_error(
     prompts_prepare(
       role = "linguist",
@@ -266,7 +266,7 @@ test_that('prompts_prepare handles missing user template', {
     `user-linguist` = file.path(prompts_dir, 'nonexistent-user.md')
   )
   skip_if(file.exists(templates$`user-linguist`))
-
+  
   expect_error(
     prompts_prepare(
       role = "linguist",
@@ -287,7 +287,7 @@ test_that('prompts_prepare works with domain role and domain parameter', {
     `user-domain` = file.path(prompts_dir, 'user-domain.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   result <- prompts_prepare(
     role = "domain",
     templates = templates,
@@ -297,7 +297,7 @@ test_that('prompts_prepare works with domain role and domain parameter', {
     target_type = "the object",
     domain = "technology and employment expert"
   )
-
+  
   expect_type(result, "list")
   expect_true(nchar(result$system) > 0)
   expect_true(nchar(result$task) > 0)
@@ -312,9 +312,9 @@ test_that('prompts_prepare works with judger role and no additional options', {
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   result <- prompts_prepare(
     role = "judger",
     templates = templates,
@@ -328,7 +328,7 @@ test_that('prompts_prepare works with judger role and no additional options', {
     AgainstResponse = "Most likely, this is some kind of malicious mockery",
     NeutralResponse = "Context is missing and we should be sceptical"
   )
-
+  
   expect_type(result, "list")
   expect_true(nchar(result$system) > 0)
   expect_true(all(nchar(result$task) > 0))
@@ -349,9 +349,9 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   result <- prompts_prepare(
     role = "judger",
     templates = templates,
@@ -365,7 +365,7 @@ test_that('prompts_prepare works with judger role and reference resolution', {
     AgainstResponse = "Most likely, this is some kind of malicious mockery",
     NeutralResponse = "Context is missing and we should be sceptical"
   )
-
+  
   expect_type(result, "list")
   expect_true(nchar(result$system) > 0)
   expect_true(all(nchar(result$task) > 0))
@@ -386,9 +386,9 @@ test_that('prompts_prepare works with judger role and claim resolution', {
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   result <- prompts_prepare(
     role = "judger",
     templates = templates,
@@ -402,7 +402,7 @@ test_that('prompts_prepare works with judger role and claim resolution', {
     AgainstResponse = "Most likely, this is some kind of malicious mockery",
     NeutralResponse = "Context is missing and we should be sceptical"
   )
-
+  
   expect_type(result, "list")
   expect_true(nchar(result$system) > 0)
   expect_true(all(nchar(result$task) > 0))
@@ -423,9 +423,9 @@ test_that('prompts_prepare works with judger role and both options', {
     scale_guide = file.path(prompts_dir, 'guide-likert.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("some text", "and more")
-
+  
   result <- prompts_prepare(
     role = "judger",
     templates = templates,
@@ -439,7 +439,7 @@ test_that('prompts_prepare works with judger role and both options', {
     AgainstResponse = "Most likely, this is some kind of malicious mockery",
     NeutralResponse = "Context is missing and we should be sceptical"
   )
-
+  
   expect_type(result, "list")
   expect_true(nchar(result$system) > 0)
   expect_true(all(nchar(result$task) > 0))
@@ -457,7 +457,7 @@ test_that('prompts_prepare returns consistent results for same inputs', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   result1 <- prompts_prepare(
     role = "linguist",
     templates = templates,
@@ -474,7 +474,7 @@ test_that('prompts_prepare returns consistent results for same inputs', {
     text = c("some text", "and more"),
     target_type = "the object"
   )
-
+  
   expect_identical(result1$system, result2$system)
   expect_identical(result1$task, result2$task)
 })
@@ -485,7 +485,7 @@ test_that('prompts_prepare produces different results for different target', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   result1 <- prompts_prepare(
     role = "linguist",
     templates = templates,
@@ -502,7 +502,7 @@ test_that('prompts_prepare produces different results for different target', {
     text = c("some text", "and more"),
     target_type = "the object"
   )
-
+  
   expect_identical(result1$system, result2$system)
   expect_disjoint(result1$task, result2$task)
 })
@@ -513,9 +513,9 @@ test_that('prompts_prepare fails with empty user prompt', {
     `user-judger` = file.path(prompts_dir, 'user-judger.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("content analysis", "text mining")
-
+  
   mockery::stub(prompts_prepare, "ellmer::interpolate_file", NULL)
   prompts_prepare(
     role = "judger",
@@ -535,9 +535,9 @@ test_that('prompts_prepare fails with empty strings', {
     `user-linguist` = file.path(prompts_dir, 'user-linguist.md')
   )
   skip_if_not(all(file.exists(unlist(templates))))
-
+  
   texts <- c("content analysis", "text mining")
-
+  
   m <- mockery::mock("System prompt", "")
   mockery::stub(prompts_prepare, "ellmer::interpolate_file", m)
   prompts_prepare(
@@ -574,7 +574,7 @@ test_that("tasks_validate throws error on incorrect length", {
     "User prompt interpolation returned unexpected results",
     fixed = TRUE
   )
-
+  
   expect_error(
     tasks_validate(tasks, 1),
     "User prompt interpolation returned unexpected results",
@@ -588,7 +588,7 @@ test_that("tasks_validate throws error if tasks is not character", {
     "User prompt interpolation returned unexpected results",
     fixed = TRUE
   )
-
+  
   expect_error(
     tasks_validate(c(1, 2), 2),
     "User prompt interpolation returned unexpected results",
@@ -645,9 +645,9 @@ test_that("tasks_prepare returns correct structure for single system prompt", {
     task = c("Task 1", "Task 2", "Task 3")
   )
   n_texts <- 3
-
+  
   result <- tasks_prepare(chat_base, prompts, n_texts)
-
+  
   expect_type(result, "list")
   expect_named(result, c("chats", "tasks"))
   expect_length(result$chats, 1)
@@ -662,9 +662,9 @@ test_that("tasks_prepare returns correct structure for multiple system prompts",
     task = c("Task 1", "Task 2")
   )
   n_texts <- 2
-
+  
   result <- tasks_prepare(chat_base, prompts, n_texts)
-
+  
   expect_named(result, c("chats", "tasks"))
   expect_length(result$chats, 2)
   expect_equal(result$chats[[1]]$system_prompt, "System 1")
@@ -679,7 +679,7 @@ test_that("tasks_prepare throws error on mismatched system prompt length", {
     task = c("Task 1", "Task 2", "Task 3")
   )
   n_texts <- 3
-
+  
   expect_error(
     tasks_prepare(chat_base, prompts, n_texts),
     regexp = "Length of system and user prompts must match 3",
@@ -695,7 +695,7 @@ test_that("tasks_prepare validates user tasks using tasks_validate", {
     task = c("Task 1", "")
   )
   n_texts <- 2
-
+  
   expect_error(
     tasks_prepare(chat_base, prompts, n_texts),
     regexp = "User prompt is empty after interpolation",
@@ -706,14 +706,14 @@ test_that("tasks_prepare validates user tasks using tasks_validate", {
 test_that("tasks_prepare clones the base chat deeply", {
   chat_base <- MockChat$new()
   chat_base$system_prompt <- "Original"
-
+  
   prompts <- list(
     system = "New System",
     task = "Task 1"
   )
-
+  
   result <- tasks_prepare(chat_base, prompts, 1)
-
+  
   # Check that the clone has the new prompt but the base remains unchanged
   expect_equal(result$chats[[1]]$system_prompt, "New System")
   expect_equal(chat_base$system_prompt, "Original")

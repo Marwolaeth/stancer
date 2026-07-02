@@ -52,9 +52,9 @@ stage_1_parallel_analysis <- function(
     'domain_roles'
   )
   validate_fields(inputs, required_fields, 'expert analysis')
-
+  
   n <- length(inputs$texts)
-
+  
   tictoc::tic('Stage 1')
   if (verbose) {
     cat(
@@ -62,7 +62,7 @@ stage_1_parallel_analysis <- function(
       "\n"
     )
   }
-
+  
   expert_roles <- c('linguist', 'domain', 'interpreter')
   expert_info <- c(
     linguist = 'Linguistic analysis',
@@ -83,13 +83,13 @@ stage_1_parallel_analysis <- function(
     }
   )
   names(analysis_results) <- c('linguistic', 'domain', 'social_media')
-
+  
   # The result is a list of character vectors of length length(texts)
   ## One vector for each role
   inputs[['analysis_results']] <- analysis_results
-
+  
   tictoc::toc(func.toc = stage_complete, quiet = !verbose)
-
+  
   inputs
 }
 
@@ -122,14 +122,14 @@ stage_2_parallel_debates <- function(
     'scale'
   )
   validate_fields(inputs, required_fields, 'stance debates')
-
+  
   n <- length(inputs$texts)
-
+  
   # Ensure Stage 1 results are present and valid
   validate_inputs(inputs$analysis_results$linguistic, n, 'Linguistic analysis')
   validate_inputs(inputs$analysis_results$domain, n, 'Domain expert analysis')
   validate_inputs(inputs$analysis_results$social_media, n, 'Social media analysis')
-
+  
   tictoc::tic('Stage 2')
   if (verbose) {
     cat(
@@ -138,9 +138,9 @@ stage_2_parallel_debates <- function(
       "\n"
     )
   }
-
+  
   stance_labels <- c('positive', 'negative', 'neutral')
-
+  
   # 1. Prepare tasks for each stance
   debater_tasks <- lapply(
     stance_labels,
@@ -157,7 +157,7 @@ stage_2_parallel_debates <- function(
     }
   )
   names(debater_tasks) <- stance_labels
-
+  
   # 2. Execute parallel debates for each stance group
   inputs[['debate_results']] <- lapply(
     debater_tasks,
@@ -169,9 +169,9 @@ stage_2_parallel_debates <- function(
       ) |> catch('stance debates')
     }
   )
-
+  
   tictoc::toc(func.toc = stage_complete, quiet = !verbose)
-
+  
   inputs
 }
 
@@ -210,7 +210,7 @@ stage_3_parallel_judgement <- function(
     ...
 ) {
   n <- length(inputs$texts)
-
+  
   # Validate input structure
   required_fields <- c(
     'prompt_templates',
@@ -223,25 +223,25 @@ stage_3_parallel_judgement <- function(
     'scale'
   )
   validate_fields(inputs, required_fields, 'stance decision')
-
+  
   # Ensure Stage 2 results are present and valid
   validate_inputs(inputs$debate_results$positive, n, 'Positive stance debates')
   validate_inputs(inputs$debate_results$negative, n, 'Negative stance debates')
   validate_inputs(inputs$debate_results$neutral, n, 'Neutral stance debates')
-
+  
   tictoc::tic('Stage 3')
   if (verbose) {
     cat(glue::glue("\U23F3 Stage 3: Parallel judgement ({n} items)..."), "\n")
   }
-
+  
   # 1. Prepare tasks for the judge
   judger_tasks <- prepare_judger_chats(
     inputs,
     chat_base = chat_base
   )
-
+  
   if (verbose) cat("    \u2696\UFE0F Running parallel judgements...\n")
-
+  
   # 2. Execute structured parallel judgements
   inputs[['judgement_results']] <- ellmer::parallel_chat_structured(
     chat = judger_tasks$chats[[1]],
@@ -255,7 +255,7 @@ stage_3_parallel_judgement <- function(
     convert = TRUE,
     ...
   ) |> catch('making final judgement')
-
+  
   # 3. Check for failed judgements (NA values)
   if (any(is.na(inputs$judgement_results$stance))) {
     n_na <- sum(is.na(inputs$judgement_results$stance))
@@ -264,8 +264,8 @@ stage_3_parallel_judgement <- function(
       call = rlang::expr(llm_stance())
     )
   }
-
+  
   tictoc::toc(func.toc = stage_complete, quiet = !verbose)
-
+  
   inputs
 }

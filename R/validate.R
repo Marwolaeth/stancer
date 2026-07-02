@@ -12,7 +12,7 @@
 
 validate_character <- function(x) {
   arg_name <- deparse(substitute(x))
-
+  
   if (!rlang::is_character(x)) {
     abort(
       "{.arg {arg_name}} must be a character vector, got {.cls {class(x)}}"
@@ -29,7 +29,7 @@ validate_character <- function(x) {
       )
     )
   }
-
+  
   invisible(TRUE)
 }
 
@@ -58,18 +58,18 @@ validate_fields <- function(inputs, required_fields, input_name = 'analysis') {
   if (!rlang::is_scalar_character(input_name)) {
     cli::cli_abort("{.arg input_name} must be a character scalar.")
   }
-
+  
   if (is.null(inputs)) {
     abort("Input for {input_name} is empty")
   }
-
+  
   missing_fields <- setdiff(required_fields, names(inputs))
   if (length(missing_fields) > 0) {
     abort(
       "Input for {input_name} misses required fields: {.var {missing_fields}}"
     )
   }
-
+  
   invisible(TRUE)
 }
 
@@ -90,11 +90,11 @@ validate_inputs <- function(inputs, expected_length, input_name = 'Inputs') {
   if (!rlang::is_scalar_character(input_name)) {
     cli::cli_abort("{.arg input_name} must be a character scalar.")
   }
-
+  
   if (is.null(inputs) || length(inputs) != expected_length) {
     abort("{input_name} returned unexpected results")
   }
-
+  
   invisible(TRUE)
 }
 

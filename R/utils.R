@@ -40,7 +40,7 @@ catch <- function(
             Got {.cls {class(expr_name)}}"
     )
   }
-
+  
   rlang::try_fetch(
     expr,
     error = function(e) {
@@ -70,7 +70,7 @@ catch_eval <- function(
             Got {.cls {class(quo)}}"
     )
   }
-
+  
   rlang::try_fetch(
     rlang::eval_tidy(quo, data),
     error = function(e) {
@@ -96,7 +96,7 @@ catch_eval <- function(
 
 recycle_arg <- function(arg, n) {
   arg_name <- deparse(substitute(arg))
-
+  
   if (length(arg) == 1) {
     return(rep(arg, n))
   } else if (length(arg) == n) {
@@ -158,6 +158,6 @@ truncate <- function(x, a, b) {
   if (!is.numeric(b)) {
     cli::cli_abort("{.arg b} must be numeric")
   }
-
+  
   pmin(pmax(x, a), b)
 }

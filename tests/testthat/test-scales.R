@@ -73,10 +73,10 @@ test_that('type_stance_categorical and likert have different values', {
   cat_file <- file.path(prompts_dir, 'description-categorical.md')
   likert_file <- file.path(prompts_dir, 'description-likert.md')
   skip_if_not(file.exists(cat_file) && file.exists(likert_file))
-
+  
   cat_result <- type_stance_categorical(cat_file)
   likert_result <- type_stance_likert(likert_file)
-
+  
   expect_length(cat_result@values, 3)
   expect_length(likert_result@values, 5)
   expect_false(cat_result@description == likert_result@description)
@@ -193,7 +193,7 @@ test_that('type_stance_analysis includes localised explanation description', {
 test_that('type_stance_analysis uses correct language for explanation', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))
-
+  
   result_en <- type_stance_analysis(
     language = "en",
     description_file = template_file
@@ -202,7 +202,7 @@ test_that('type_stance_analysis uses correct language for explanation', {
     language = "uk",
     description_file = template_file
   )
-
+  
   expect_false(
     result_en@properties$explanation@description ==
       result_uk@properties$explanation@description
@@ -251,9 +251,9 @@ test_that('type_stance_analysis handles missing description file', {
 test_that('type_stance_analysis works with all available languages', {
   template_file <- file.path(prompts_dir, 'description-categorical.md')
   skip_if_not(file.exists(template_file))
-
+  
   available_langs <- stancer_available_languages()
-
+  
   for (lang in available_langs) {
     result <- type_stance_analysis(
       language = lang,
@@ -269,13 +269,13 @@ test_that('type_stance_analysis works with all scale types', {
   cat_file <- file.path(prompts_dir, 'description-categorical.md')
   num_file <- file.path(prompts_dir, 'description-numeric.md')
   likert_file <- file.path(prompts_dir, 'description-likert.md')
-
+  
   skip_if_not(
     file.exists(cat_file) &&
       file.exists(num_file) &&
       file.exists(likert_file)
   )
-
+  
   result_cat <- type_stance_analysis(
     language = "en",
     description_file = cat_file,
@@ -291,7 +291,7 @@ test_that('type_stance_analysis works with all scale types', {
     description_file = likert_file,
     scale = "likert"
   )
-
+  
   expect_is(result_cat@properties$stance, "ellmer::TypeEnum")
   expect_equal(result_num@properties$stance@type, "number")
   expect_is(result_likert@properties$stance, "ellmer::TypeEnum")

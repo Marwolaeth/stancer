@@ -21,11 +21,11 @@ test_that("stage_1_parallel_analysis validates inputs and returns results", {
     domain_roles = "AI Expert",
     prompt_templates = list(a = 1)
   )
-
+  
   # 2. Set-up Mocks
   # Mock validate_fields to just pass
   mockery::stub(stage_1_parallel_analysis, "validate_fields", TRUE)
-
+  
   # Mock execute_role to return role-specific strings
   mock_execute <- mockery::mock(
     c("L1", "L2"), # First call: linguist
@@ -33,25 +33,25 @@ test_that("stage_1_parallel_analysis validates inputs and returns results", {
     c("S1", "S2")  # Third call: interpreter
   )
   mockery::stub(stage_1_parallel_analysis, "execute_role", mock_execute)
-
+  
   # Mock tictoc to avoid console noise/errors
   mockery::stub(stage_1_parallel_analysis, "tictoc::tic", NULL)
   mockery::stub(stage_1_parallel_analysis, "tictoc::toc", NULL)
-
+  
   # 3. Execute
   result <- stage_1_parallel_analysis(
     inputs,
     chat_base = MockChat$new(),
     verbose = FALSE
   )
-
+  
   # 4. Verify
   expect_true("analysis_results" %in% names(result))
   expect_named(result$analysis_results, c("linguistic", "domain", "social_media"))
   expect_equal(result$analysis_results$linguistic, c("L1", "L2"))
   expect_equal(result$analysis_results$domain, c("D1", "D2"))
   expect_equal(result$analysis_results$social_media, c("S1", "S2"))
-
+  
   # Verify execute_role was called exactly 3 times
   mockery::expect_called(mock_execute, 3)
 })
@@ -65,7 +65,7 @@ test_that("stage_1_parallel_analysis fails if required fields are missing", {
     language = "en",
     prompt_templates = list()
   )
-
+  
   # We don't stub validate_fields here because we want to test that it's actually called
   # and catches the error as expected.
   mockery::stub(stage_1_parallel_analysis, "validate_fields", validate_fields)
@@ -80,17 +80,17 @@ test_that("stage_1_parallel_analysis respects verbose flag", {
     texts = "T1", targets = "A", target_types = "claim",
     language = "en", domain_roles = "AI Expert", prompt_templates = list()
   )
-
+  
   mockery::stub(stage_1_parallel_analysis, "validate_fields", TRUE)
   mockery::stub(stage_1_parallel_analysis, "execute_role", list("Result"))
   mockery::stub(stage_1_parallel_analysis, "tictoc::tic", NULL)
   mockery::stub(stage_1_parallel_analysis, "tictoc::toc", NULL)
-
+  
   expect_output(
     stage_1_parallel_analysis(inputs, MockChat$new(), verbose = TRUE),
     regexp = "Stage 1: Expert analysis"
   )
-
+  
   expect_silent(
     stage_1_parallel_analysis(inputs, MockChat$new(), verbose = FALSE)
   )
@@ -123,16 +123,16 @@ test_that("stage_2_parallel_debates executes three debate branches", {
       social_media = c("S1", "S2")
     )
   )
-
+  
   # 2. Set-up Mocks
   # mockery::stub(stage_2_parallel_debates, "validate_fields", TRUE)
   # mockery::stub(stage_2_parallel_debates, "validate_inputs", TRUE)
   mockery::stub(stage_2_parallel_debates, "tictoc::tic", NULL)
   mockery::stub(stage_2_parallel_debates, "tictoc::toc", NULL)
-
+  
   # Mock l() localization helper
   mockery::stub(stage_2_parallel_debates, "l", function(lang, key, scale) key)
-
+  
   # Mock prepare_debater_chats
   # We return a dummy chat and tasks
   mockery::stub(
@@ -142,7 +142,7 @@ test_that("stage_2_parallel_debates executes three debate branches", {
       list(chats = list(MockChat$new()), tasks = paste(stance, "task"))
     }
   )
-
+  
   # Mock parallel_chat_text to return stance-specific results
   mock_parallel <- mockery::mock(
     "Pos Result", # first call (positive)
@@ -150,20 +150,20 @@ test_that("stage_2_parallel_debates executes three debate branches", {
     "Neu Result"  # third call (neutral)
   )
   mockery::stub(stage_2_parallel_debates, "ellmer::parallel_chat_text", mock_parallel)
-
+  
   # 3. Execute
   result <- stage_2_parallel_debates(
     inputs,
     MockChat$new(),
     verbose = TRUE
   )
-
+  
   # 4. Verify
   expect_named(result$debate_results, c("positive", "negative", "neutral"))
   expect_equal(result$debate_results$positive, "Pos Result")
   expect_equal(result$debate_results$negative, "Neg Result")
   expect_equal(result$debate_results$neutral, "Neu Result")
-
+  
   # Verify it was called 3 times (once for each stance)
   mockery::expect_called(mock_parallel, 3)
 })
@@ -177,10 +177,10 @@ test_that("stage_2_parallel_debates validates Stage 1 results before proceeding"
       social_media = c("S1", "S2")
     )
   )
-
+  
   # Mock validate_fields but let validate_inputs run
   mockery::stub(stage_2_parallel_debates, "validate_fields", TRUE)
-
+  
   # validate_inputs should throw error because linguistic length (1) != n (2)
   expect_error(
     stage_2_parallel_debates(inputs, MockChat$new(), verbose = FALSE),
@@ -199,7 +199,7 @@ test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text
       linguistic = "L1", domain = "D1", social_media = "S1"
     )
   )
-
+  
   # Mock dependencies
   # mockery::stub(stage_2_parallel_debates, "validate_fields", TRUE)
   # mockery::stub(stage_2_parallel_debates, "validate_inputs", TRUE)
@@ -209,13 +209,13 @@ test_that("stage_2_parallel_debates passes the correct RPM to parallel_chat_text
     "prepare_debater_chats",
     list(chats = list(MockChat$new()), tasks = "task")
   )
-
+  
   mock_parallel <- mockery::mock("Pos Result", "Neg Result", "Neu Result")
   mockery::stub(stage_2_parallel_debates, "ellmer::parallel_chat_text", mock_parallel)
-
+  
   # Execute with custom RPM
   stage_2_parallel_debates(inputs, MockChat$new(), rpm = 42, verbose = FALSE)
-
+  
   # Verify RPM in the first call to parallel_chat_text
   args <- mockery::mock_args(mock_parallel)[[1]]
   expect_equal(args$rpm, 42)
@@ -232,18 +232,18 @@ test_that("stage_2_parallel_debates correctly localises stances for each branch"
       linguistic = "L1", domain = "D1", social_media = "S1"
     )
   )
-
+  
   # 2. Set-up Mocks
   # mockery::stub(stage_2_parallel_debates, "validate_fields", TRUE)
   # mockery::stub(stage_2_parallel_debates, "validate_inputs", TRUE)
   mockery::stub(stage_2_parallel_debates, "tictoc::tic", NULL)
   mockery::stub(stage_2_parallel_debates, "tictoc::toc", NULL)
-
+  
   # Mocking l(), so that it returns a recognisable marker
   mockery::stub(stage_2_parallel_debates, "l", function(lang, key, scale) {
     paste0("loc_", key)
   })
-
+  
   # Мокаем prepare_debater_chats, чтобы отследить, какой stance в неё пришел
   mock_prepare <- mockery::mock(
     list(chats = list(MockChat$new()), tasks = "task"), # для positive
@@ -251,7 +251,7 @@ test_that("stage_2_parallel_debates correctly localises stances for each branch"
     list(chats = list(MockChat$new()), tasks = "task")  # для neutral
   )
   mockery::stub(stage_2_parallel_debates, "prepare_debater_chats", mock_prepare)
-
+  
   # Mock parallel_chat_text to return stance-specific results
   mock_parallel <- mockery::mock(
     "Pos Result", # first call (positive)
@@ -259,24 +259,24 @@ test_that("stage_2_parallel_debates correctly localises stances for each branch"
     "Neu Result"  # third call (neutral)
   )
   mockery::stub(stage_2_parallel_debates, "ellmer::parallel_chat_text", mock_parallel)
-
+  
   # 3. Execute
   stage_2_parallel_debates(inputs, MockChat$new(), verbose = FALSE)
-
+  
   # 4. Verify
   # Достаем аргументы всех трех вызовов prepare_debater_chats
   mockery::expect_called(mock_prepare, 3)
-
+  
   prep_args <- mockery::mock_args(mock_prepare)
-
+  
   # Проверяем, что в каждом вызове аргумент stance был локализован правильно
   expect_equal(prep_args[[1]]$stance, "loc_stance_positive")
   expect_equal(prep_args[[2]]$stance, "loc_stance_negative")
   expect_equal(prep_args[[3]]$stance, "loc_stance_neutral")
-
+  
   # Также можно проверить, что inputs и chat_base передаются без изменений
   expect_equal(prep_args[[1]]$inputs$language, "en")
-
+  
   expect_equal(prep_args[[1]]$inputs$scale, "likert")
 })
 
@@ -290,7 +290,7 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
       linguistic = character(0), domain = character(0), social_media = character(0)
     )
   )
-
+  
   # mockery::stub(stage_2_parallel_debates, "validate_fields", TRUE)
   # mockery::stub(stage_2_parallel_debates, "validate_inputs", TRUE)
   mockery::stub(
@@ -301,9 +301,9 @@ test_that("stage_2_parallel_debates handles empty input texts gracefully", {
   # Mock parallel_chat_text to return stance-specific results
   mock_parallel <- mockery::mock(character(0), character(0), character(0))
   mockery::stub(stage_2_parallel_debates, "ellmer::parallel_chat_text", mock_parallel)
-
+  
   result <- stage_2_parallel_debates(inputs, MockChat$new(), verbose = FALSE)
-
+  
   expect_length(result$debate_results$positive, 0)
   expect_named(result$debate_results, c("positive", "negative", "neutral"))
 })
@@ -336,22 +336,22 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
       neutral = c("Neu1", "Neu2")
     )
   )
-
+  
   # 2. Setup Mocks
   # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
   # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
   mockery::stub(stage_3_parallel_judgement, "tictoc::tic", NULL)
   mockery::stub(stage_3_parallel_judgement, "tictoc::toc", NULL)
-
+  
   # Mock schema generator
   mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "mock_schema")
-
+  
   # Mock prepare_judger_chats
   mockery::stub(stage_3_parallel_judgement, "prepare_judger_chats", list(
     chats = list(MockChat$new()),
     tasks = c("Task 1", "Task 2")
   ))
-
+  
   # Mock parallel_chat_structured
   mock_results <- data.frame(
     stance = c("Strongly Disagree", "Agree"),
@@ -363,18 +363,18 @@ test_that("stage_3_parallel_judgement executes structured chat with correct sche
     "ellmer::parallel_chat_structured",
     mock_parallel
   )
-
+  
   # 3. Execute
   result <- stage_3_parallel_judgement(
     inputs,
     MockChat$new(),
     verbose = TRUE
   )
-
+  
   # 4. Verify
   mockery::expect_called(mock_parallel, 1)
   expect_equal(result$judgement_results, mock_results)
-
+  
   # Verify arguments passed to parallel_chat_structured
   args <- mockery::mock_args(mock_parallel)[[1]]
   expect_equal(args$type, "mock_schema")
@@ -387,7 +387,7 @@ test_that("stage_3_parallel_judgement warns when NA stances are returned", {
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
-
+  
   # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
   # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
   mockery::stub(
@@ -396,7 +396,7 @@ test_that("stage_3_parallel_judgement warns when NA stances are returned", {
     list(chats = list(1), tasks = "T")
   )
   mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "likert schema")
-
+  
   # Return a result with NA stance
   mock_results <- data.frame(stance = NA_real_, explanation = "AI has failed")
   mockery::stub(
@@ -404,7 +404,7 @@ test_that("stage_3_parallel_judgement warns when NA stances are returned", {
     "ellmer::parallel_chat_structured",
     mock_results
   )
-
+  
   # Expect warning from cli::cli_warn
   expect_warning(
     stage_3_parallel_judgement(inputs, MockChat$new(), verbose = FALSE),
@@ -419,7 +419,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
     language = "en", scale = "likert", prompt_templates = list(),
     debate_results = list(positive = "P", negative = "N", neutral = "Neu")
   )
-
+  
   # mockery::stub(stage_3_parallel_judgement, "validate_fields", TRUE)
   # mockery::stub(stage_3_parallel_judgement, "validate_inputs", TRUE)
   mockery::stub(stage_3_parallel_judgement, "type_stance_analysis", "likert schema")
@@ -428,7 +428,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
     "prepare_judger_chats",
     list(chats = list(1), tasks = "T")
   )
-
+  
   mock_parallel <- mockery::mock(
     data.frame(stance = "Strongly Agree", explanation = "AI Content Analysis")
   )
@@ -437,7 +437,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
     "ellmer::parallel_chat_structured",
     mock_parallel
   )
-
+  
   # Pass a custom argument like 'max_tokens'
   stage_3_parallel_judgement(
     inputs,
@@ -447,7 +447,7 @@ test_that("stage_3_parallel_judgement passes additional arguments (...) to paral
     max_active = 12,
     on_error = "stop"
   )
-
+  
   args <- mockery::mock_args(mock_parallel)[[1]]
   expect_equal(args$max_active, 12)
   expect_equal(args$on_error, "stop")

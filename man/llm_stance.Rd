@@ -13,6 +13,7 @@ llm_stance(x, ...)
   target,
   chat_base,
   type = c("object"),
+  method = "cola",
   language = stancer_available_languages(),
   scale = c("categorical", "numeric", "likert"),
   domain_role = NULL,
@@ -76,7 +77,6 @@ S3 object of class "stance_result" with:
 \item debates: debate results
 \item judgements: final judgements
 \item metadata: processing metadata
-⁠@importFrom ellmer is_chat
 }
 }
 \description{

@@ -35,9 +35,9 @@ execute_role <- function(
     chat_base = chat_base,
     expert_role = expert_role
   )
-
+  
   if (verbose) cat('    \U1F4CA', glue::glue('{info}...'), '\n')
-
+  
   # If multiple system_prompts, e.g
   if (length(tasks$chats) > 1) {
     # Use sequential analysis
@@ -62,7 +62,7 @@ execute_role <- function(
       rpm = rpm
     ) |> catch(tolower(info))
   }
-
+  
   if (!is.character(results) || (length(results) != length(inputs$texts))) {
     abort(
       c(
@@ -71,7 +71,7 @@ execute_role <- function(
       )
     )
   }
-
+  
   results
 }
 
@@ -118,7 +118,7 @@ prepare_debater_chats <- function(
       UserResponse = analysis_results$social_media
     )
   )
-
+  
   # Stage 2 requires a consistent system prompt across all items
   if (length(prompts$system) > 1) {
     abort(
@@ -128,7 +128,7 @@ prepare_debater_chats <- function(
       )
     )
   }
-
+  
   tasks_prepare(chat_base, prompts, length(inputs$texts))
 }
 
@@ -173,7 +173,7 @@ prepare_expert_chats <- function(
     c('linguist', 'domain', 'interpreter'),
     multiple = FALSE
   )
-
+  
   # Load instructions for the expert
   prompts <- with(
     inputs,
@@ -187,7 +187,7 @@ prepare_expert_chats <- function(
       domain = domain_roles
     )
   )
-
+  
   tasks_prepare(chat_base, prompts, length(inputs$texts))
 }
 
@@ -222,7 +222,7 @@ prepare_judger_chats <- function(
       add_claim_resolution = 'claim' %in% types
     )
   )
-
+  
   if (length(prompts$system) > 1) {
     abort(
       c(
@@ -231,6 +231,6 @@ prepare_judger_chats <- function(
       )
     )
   }
-
+  
   tasks_prepare(chat_base, prompts, length(inputs$texts))
 }

@@ -63,19 +63,19 @@ inspect.stance_result <- function(
     index = 1,
     ...
 ) {
-
+  
   what <- match.arg(what)
   ellmer:::check_number_whole(index, min = 1)
-
+  
   switch(
     what,
-
+    
     #### Inspect Metadata ----
     metadata = {
       cat("\n", cli::rule("METADATA"), "\n\n")
       yaml::write_yaml(x$metadata, file = stdout())
     },
-
+    
     #### Inspect Analysis Results ----
     analysis = {
       if (is.null(within)) {
@@ -102,16 +102,16 @@ inspect.stance_result <- function(
             "Available: {.val {names(x$analysis)}}"
           )
         }
-
+        
         if (index > length(x$analysis)) {
           cli::cli_abort(
             "Index {index} out of bounds. ",
             "Analysis has {length(x$analysis)} rows."
           )
         }
-
+        
         content <- x$analysis[[within]][index]
-
+        
         cat(
           "\n",
           cli::rule(
@@ -123,7 +123,7 @@ inspect.stance_result <- function(
           ),
           "\n\n"
         )
-
+        
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
@@ -132,7 +132,7 @@ inspect.stance_result <- function(
         }
       }
     },
-
+    
     #### Inspect Stance Debates ----
     debates = {
       if (is.null(within)) {
@@ -159,16 +159,16 @@ inspect.stance_result <- function(
             "Available: {.val {names(x$debates)}}"
           )
         }
-
+        
         if (index > length(x$debates)) {
           cli::cli_abort(
             "Index {index} out of bounds. ",
             "Debates has {length(x$debates)} rows."
           )
         }
-
+        
         content <- x$debates[[within]][index]
-
+        
         cat(
           "\n",
           cli::rule(
@@ -180,7 +180,7 @@ inspect.stance_result <- function(
           ),
           "\n\n"
         )
-
+        
         if (is.na(content) || is.null(content)) {
           cat(cli::col_yellow("(empty)\n\n"))
         } else {
@@ -189,7 +189,7 @@ inspect.stance_result <- function(
         }
       }
     },
-
+    
     #### Inspect Explanation ----
     explanation = {
       if (!is.null(within)) {
@@ -200,7 +200,7 @@ inspect.stance_result <- function(
           )
         )
       }
-
+      
       if (index > length(x$summary$explanation)) {
         cli::cli_abort(
           c(
@@ -209,9 +209,9 @@ inspect.stance_result <- function(
           )
         )
       }
-
+      
       content <- x[['summary']][['explanation']][index]
-
+      
       cat(
         "\n",
         cli::rule(
@@ -219,7 +219,7 @@ inspect.stance_result <- function(
         ),
         "\n\n"
       )
-
+      
       if (is.na(content) || is.null(content)) {
         cat(cli::col_yellow("(empty)\n\n"))
       } else {
@@ -228,7 +228,7 @@ inspect.stance_result <- function(
       }
     }
   )
-
+  
   invisible(x)
 }
 
@@ -264,36 +264,36 @@ llm_stance.data.frame <- function(
     ...
 ) {
   data <- x
-
+  
   # Tidy evaluation
   text_quo <- rlang::enquo(text)
   target_quo <- rlang::enquo(target)
   type_quo <- rlang::enquo(type)
   language_quo <- rlang::enquo(language)
   domain_role_quo <- rlang::enquo(domain_role)
-
+  
   # Validate and get argument vectors
   text_vec <- catch_eval(text_quo, data)
   target_vec <-  catch_eval(target_quo, data)
   type_vec <- safe_eval(type_quo, data)
   language_vec <- safe_eval(language_quo, data)
   domain_role_vec <- safe_eval(domain_role_quo, data)
-
+  
   # Fall-back to the defaults
   if (rlang::is_null(type_vec)) {
     type_vec <- c('object', 'claim')
   }
-
+  
   if (rlang::is_null(language_vec)) {
     cli::cli_warn(
       c("Cannot find {.arg language} in data or environment")
     )
   }
-
+  
   # Names for messages
   text_name <- rlang::as_name(text_quo)
   target_name <- rlang::as_name(target_quo)
-
+  
   if (verbose) {
     cli::cli_inform(
       c(
@@ -301,7 +301,7 @@ llm_stance.data.frame <- function(
       )
     )
   }
-
+  
   result <- llm_stance(
     x = text_vec,
     target = target_vec,
@@ -315,11 +315,11 @@ llm_stance.data.frame <- function(
     rpm = rpm,
     ...
   )
-
+  
   # Augment `data`
   n_rows <- nrow(data)
   n_results <- nrow(result$summary)
-
+  
   if (n_results != n_rows) {
     cli::cli_warn(
       c(
@@ -329,11 +329,11 @@ llm_stance.data.frame <- function(
     )
     result$summary <- result$summary[seq_len(min(n_rows, n_results)), ]
   }
-
+  
   data[[.output_col]] <- c(result$summary$stance, rep(NA, n_rows - n_results))
-
+  
   attr(data, 'llm_stance_metadata') <- result$metadata
-
+  
   if (verbose) {
     cli::cli_inform(
       c(
@@ -342,7 +342,7 @@ llm_stance.data.frame <- function(
       )
     )
   }
-
+  
   return(data)
 }
 
@@ -368,34 +368,34 @@ llm_stance.data.frame <- function(
 #' # print(result)
 
 print.stance_result <- function(x, ...) {
-    cat("Stance Analysis Result\n")
-    cat(strrep("=", 60), "\n")
-    cat(
-        glue::glue("Processed: {x$metadata$n_processed}/{x$metadata$n_total} items"),
-        "\n"
-    )
-    cat(glue::glue("Failed: {x$metadata$n_failed} items"), "\n")
-    cat(glue::glue("Scale: {x$metadata$scale}"), "\n")
-    cat(glue::glue("Language: {x$metadata$language}"), "\n")
-    cat(glue::glue("Types: {paste(x$metadata$types, collapse = ', ')}"), "\n")
-    cat(
-        glue::glue(
-            "Domain role(s): {paste(x$metadata$domain_role, collapse = ', ')}"
-        ),
-        "\n"
-    )
-    cat(
-        glue::glue("Model(s) used: {paste(x$metadata$model, collapse = ', ')}"),
-        "\n"
-    )
-    cat(glue::glue("Time elapsed: {round(x$metadata$elapsed, 2)} sec"), "\n")
-    cat(glue::glue("Timestamp: {x$metadata$timestamp}"), "\n")
-    cat(strrep("=", 60), "\n\n")
-
-    cat("Summary Table:\n")
-    print(x$summary, ...)
-
-    invisible(x)
+  cat("Stance Analysis Result\n")
+  cat(strrep("=", 60), "\n")
+  cat(
+    glue::glue("Processed: {x$metadata$n_processed}/{x$metadata$n_total} items"),
+    "\n"
+  )
+  cat(glue::glue("Failed: {x$metadata$n_failed} items"), "\n")
+  cat(glue::glue("Scale: {x$metadata$scale}"), "\n")
+  cat(glue::glue("Language: {x$metadata$language}"), "\n")
+  cat(glue::glue("Types: {paste(x$metadata$types, collapse = ', ')}"), "\n")
+  cat(
+    glue::glue(
+      "Domain role(s): {paste(x$metadata$domain_role, collapse = ', ')}"
+    ),
+    "\n"
+  )
+  cat(
+    glue::glue("Model(s) used: {paste(x$metadata$model, collapse = ', ')}"),
+    "\n"
+  )
+  cat(glue::glue("Time elapsed: {round(x$metadata$elapsed, 2)} sec"), "\n")
+  cat(glue::glue("Timestamp: {x$metadata$timestamp}"), "\n")
+  cat(strrep("=", 60), "\n\n")
+  
+  cat("Summary Table:\n")
+  print(x$summary, ...)
+  
+  invisible(x)
 }
 
 #' Summarise stance_result object
@@ -412,12 +412,12 @@ print.stance_result <- function(x, ...) {
 #' @export
 
 summary.stance_result <- function(object, ...) {
-    cat("Stance Distribution:\n")
-    print(table(object$summary$stance))
-    cat("\n")
-
-    cat("By Target:\n")
-    print(table(object$summary$target, object$summary$stance), ...)
-
-    invisible(object)
+  cat("Stance Distribution:\n")
+  print(table(object$summary$stance))
+  cat("\n")
+  
+  cat("By Target:\n")
+  print(table(object$summary$target, object$summary$stance), ...)
+  
+  invisible(object)
 }

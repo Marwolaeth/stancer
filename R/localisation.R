@@ -19,9 +19,9 @@ l <- function(language, caption_id, case = NULL) {
             Use: {.val {stancer_available_languages()}}"
     )
   }
-
+  
   dict <- load_translations()
-
+  
   # Проверка ключа
   if (!caption_id %in% names(dict[[language]])) {
     cli::cli_abort(
@@ -29,29 +29,29 @@ l <- function(language, caption_id, case = NULL) {
       "in language '{language}'"
     )
   }
-
+  
   translation <- dict[[language]][[caption_id]]
-
+  
   if (!is.null(case)) {
     case <- rlang::arg_match(
       case,
       c('gen', 'dat', 'categorical', 'numeric', 'likert'),
       multiple = FALSE
     )
-
+    
     if (!is.list(translation)) {
       cli::cli_abort(
         "Case '{case}' not supported for '{caption_id}' ",
         "(expected list with cases)"
       )
     }
-
+    
     if (!case %in% names(translation)) {
       cli::cli_abort(
         "Case '{case}' not found for '{caption_id}'"
       )
     }
-
+    
     translation[[case]]
   } else {
     if (is.list(translation)) {
@@ -60,7 +60,7 @@ l <- function(language, caption_id, case = NULL) {
         "Available: {.val {names(translation)}}"
       )
     }
-
+    
     translation
   }
 }
@@ -119,13 +119,13 @@ stancer_available_languages <- function() {
 
 stancer_check_translations <- function() {
   dict <- load_translations()
-
+  
   cat("Available languages:", paste(names(dict), collapse = ", "), "\n\n")
-
+  
   for (language in names(dict)) {
     cat("Language:", language, "\n")
     cat("  Keys:", length(dict[[language]]), "\n")
-
+    
     # Проверка структуры
     cases_keys <- sapply(dict[[language]], function(x) is.list(x))
     if (any(cases_keys)) {
@@ -133,7 +133,7 @@ stancer_check_translations <- function() {
     }
     cat("\n")
   }
-
+  
   invisible(TRUE)
 }
 
@@ -153,7 +153,7 @@ type_to_term <- function(
 ) {
   type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
   language <- rlang::arg_match(language, stancer_available_languages(), multiple = FALSE)
-
+  
   switch(
     type,
     object = l(language, 'object', 'dat'),

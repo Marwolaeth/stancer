@@ -14,7 +14,7 @@ test_that('llm_stance.data.frame rejects wrong `data` argument', {
 
 test_that("llm_stance.data.frame works with tidy evaluation", {
   df <- data.frame(my_text = "R is smart and tidy", my_target = "R language")
-
+  
   # Mock the character method to return a dummy result
   mock_res <- list(
     summary = data.frame(
@@ -24,14 +24,14 @@ test_that("llm_stance.data.frame works with tidy evaluation", {
     metadata = list(status = "ok")
   )
   mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
-
+  
   res_df <- llm_stance(
     df, my_text, my_target, chat_base = list(),
     .output_col = ".stance",
     language = "en",
     verbose = TRUE
   )
-
+  
   expect_true(".stance" %in% names(res_df))
   expect_equal(res_df$.stance, "Positive")
   expect_equal(attr(res_df, "llm_stance_metadata")$status, "ok")
@@ -39,7 +39,7 @@ test_that("llm_stance.data.frame works with tidy evaluation", {
 
 test_that("llm_stance.data.frame: missing column and row mismatch", {
   df <- data.frame(band = "Kamelot")
-
+  
   # 1. Missing column error
   expect_error(
     llm_stance(
@@ -52,7 +52,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
     "in data or environment",
     fixed = TRUE
   )
-
+  
   # 2. Row mismatch warning
   mock_res <- list(
     summary = data.frame(
@@ -62,12 +62,12 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
     metadata = list(status = "ok")
   )
   mockery::stub(llm_stance.data.frame, "llm_stance", mock_res)
-
+  
   df_long <- data.frame(
     txt = c("T1", "T2"),
     trg = c("A", "B")
   ) # 2 rows input
-
+  
   expect_warning(
     df_stance <- llm_stance(
       df_long,
@@ -85,7 +85,7 @@ test_that("llm_stance.data.frame: missing column and row mismatch", {
 
 test_that("llm_stance.data.frame: `language` evaluates to NULL", {
   df <- data.frame(band = "Kamelot", text = "Kamelot is great")
-
+  
   mock_res <- list(
     summary = data.frame(
       stance = "Strongly Agree",
@@ -144,7 +144,7 @@ test_that("print.stance_result outputs correct metadata and table", {
   expect_output(print(mock_res), "Model(s) used: gpt-4o", fixed = TRUE)
   expect_output(print(mock_res), "Time elapsed: 12.35 sec", fixed = TRUE) # Rounded
   expect_output(print(mock_res), "Summary Table:", fixed = TRUE)
-
+  
   # 3. Verify Invisible Return
   # Using capture.output to suppress printing during the check
   expect_invisible(val <- print(mock_res))
@@ -172,7 +172,7 @@ test_that("print.stance_result handles multiple models and roles", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # Check collapsed strings
   expect_output(print(mock_res), "Types: object, claim", fixed = TRUE)
   expect_output(print(mock_res), "Domain role(s): социолог, лингв", fixed = TRUE)
@@ -198,20 +198,20 @@ test_that("summary.stance_result outputs distribution tables", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # 2. Verify Output Headers
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
   expect_output(summary(mock_res), "By Target:", fixed = TRUE)
-
+  
   # 3. Verify Table Content
   # Check for stance counts in the distribution table
   expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
   expect_output(summary(mock_res), "2        1        0", fixed = TRUE)
-
+  
   # Check for target-based cross-tabulation
   expect_output(summary(mock_res), "Target A", fixed = TRUE)
   expect_output(summary(mock_res), "Target B", fixed = TRUE)
-
+  
   # 4. Verify Invisible Return
   expect_invisible(val <- summary(mock_res))
   expect_equal(val, mock_res)
@@ -230,7 +230,7 @@ test_that("summary.stance_result handles empty or NA results", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # table() by default excludes NA, so we expect 0 counts but the headers should remain
   expect_output(summary(mock_res), "Stance Distribution:", fixed = TRUE)
   expect_output(summary(mock_res), "Negative Neutral", fixed = TRUE)
@@ -251,7 +251,7 @@ test_that("as.data.frame.stance_result extracts summary correctly", {
     explanation = "AI Content Analysis Reasoning",
     stringsAsFactors = FALSE
   )
-
+  
   mock_res <- structure(
     list(
       summary = mock_summary,
@@ -259,10 +259,10 @@ test_that("as.data.frame.stance_result extracts summary correctly", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # 2. Test conversion
   df_result <- as.data.frame(mock_res)
-
+  
   expect_s3_class(df_result, "data.frame")
   expect_equal(nrow(df_result), 1)
   expect_equal(df_result$stance, "Positive")
@@ -277,12 +277,12 @@ test_that("as.data.frame.stance_result works with pipes", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # Check if it behaves correctly in a functional chain
   res <- mock_res |>
     as.data.frame() |>
     nrow()
-
+  
   expect_equal(res, 3)
 })
 
@@ -293,7 +293,7 @@ test_that("as.data.frame.stance_result ignores additional arguments gracefully",
     list(summary = data.frame(a = 1)),
     class = c("stance_result", "list")
   )
-
+  
   expect_no_error(as.data.frame(mock_res, row.names = "1", optional = TRUE))
 })
 
@@ -338,7 +338,7 @@ test_that("inspect.stance_result: metadata and basic structure", {
   # 1. Metadata
   expect_output(inspect(mock_res, what = "metadata"), "METADATA", fixed = TRUE)
   expect_output(inspect(mock_res, what = "metadata"), "model:", fixed = TRUE)
-
+  
   # 2. Analysis sections list (within = NULL)
   expect_output(
     inspect(mock_res, what = "analysis"),
@@ -346,7 +346,7 @@ test_that("inspect.stance_result: metadata and basic structure", {
     fixed = TRUE
   )
   expect_output(inspect(mock_res, what = "analysis"), "linguistic", fixed = TRUE)
-
+  
   # 3. Specific analysis content
   expect_output(
     inspect(mock_res, what = "analysis", within = "linguistic", index = 1),
@@ -358,13 +358,13 @@ test_that("inspect.stance_result: metadata and basic structure", {
     "L1",
     fixed = TRUE
   )
-
+  
   expect_output(
     inspect(mock_res, what = "debates"),
     "DEBATES - Available sections",
     fixed = TRUE
   )
-
+  
   expect_output(
     inspect(mock_res, what = "debates", within = "positive", index = 1),
     "DEBATES: positive [row 1]",
@@ -384,14 +384,14 @@ test_that("inspect.stance_result: debates and empty content", {
     ),
     class = c("stance_result", "list")
   )
-
+  
   # 1. Debates sections list
   expect_output(
     inspect(mock_res, what = "debates"),
     "DEBATES - Available sections",
     fixed = TRUE
   )
-
+  
   # 2. Empty content (NA)
   expect_error(
     inspect(mock_res,what = "debates", within = "positive", index = 2),
@@ -412,7 +412,7 @@ test_that("inspect.stance_result: explanation and warnings", {
     "The explicit statement",
     fixed = TRUE
   )
-
+  
   # 2. Warning when 'within' is provided for explanation
   expect_warning(
     inspect(mock_res, what = "explanation", within = "ignored"),
@@ -432,7 +432,7 @@ test_that("inspect.stance_result: error handling (out of bounds and missing sect
     "not found in debates",
     fixed = TRUE
   )
-
+  
   # 2. Index out of bounds
   expect_error(
     inspect(mock_res, what = "analysis", within = "linguistic", index = 99),
@@ -446,7 +446,7 @@ test_that("inspect.stance_result: error handling (out of bounds and missing sect
     inspect(mock_res, what = "debates", within = "positive", index = 99),
     "out of bounds"
   )
-
+  
   # 3. Invalid index type
   expect_error(inspect(mock_res, index = 0), "must be a whole number")
   

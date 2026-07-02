@@ -14,7 +14,7 @@
 
 stage_complete <- function(tic, toc, msg) {
   tocmsg <- paste0(round(toc - tic, 3), " seconds elapsed")
-
+  
   if (is.null(msg) || is.na(msg) || length(msg) == 0) {
     outmsg <- tocmsg
   } else {
