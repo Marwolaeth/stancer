@@ -4948,7 +4948,8 @@ llm_stance.character <- function(
 
   # Validate type
   if (rlang::is_character(type)) {
-    if (length(type == 2) != n) {
+    type <- unname(type) # In case it is named
+    if (length(type) != n) {
       type <- rlang::arg_match(type, c('object', 'claim'), multiple = FALSE)
     } else {
       type <- rlang::arg_match(type, c('object', 'claim'), multiple = TRUE)
