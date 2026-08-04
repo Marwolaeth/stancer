@@ -7,6 +7,10 @@
 #' @format A tibble with 35 rows and 1 column:
 #' \describe{
 #'   \item{tweet}{Text of the tweet}
+#'   \item{primary_target}{Suggested target for the stance analysis}
+#'   \item{target_type}{Type of the suggested target: either object (one of the programming languages) or claim}
+#'   \item{stance}{The text's stance towards the suggested target}
+#'   \item{approval}{Likert scale degree to which the text supports the suggested target}
 #' }
 programming_tweets <- tibble::tibble(
     tweet = c(
@@ -66,6 +70,31 @@ programming_tweets <- tibble::tibble(
         "The learning curve for Julia is steeper but the payoff for numerical computing is real.",
         "Reproducible research requires reproducible code. Language choice matters less than version control.",
         "Just finished a project using all three: R for EDA, Python for ML pipeline, Julia for numerical solving. Great experience!"
+    ),
+    primary_target = c(
+        rep("Julia programming language", 7),
+        rep("Python", 9),
+        rep("R programming language", 8),
+        rep("Arguing about programming languages is worthless", 11)
+    ),
+    target_type = c(rep("object", 24), rep("claim", 11)),
+    stance = c(
+        "Positive", "Positive", "Neutral", "Neutral", "Neutral", "Negative", "Negative",
+        "Positive", "Positive", "Positive", "Neutral", "Positive", "Neutral", "Neutral",
+        "Negative", "Negative",
+        "Positive", "Positive", "Positive", "Neutral", "Positive", "Positive", "Neutral",
+        "Negative",
+        rep("Positive", 11)
+    ),
+    approval = c(
+        "Strongly Agree", "Strongly Agree", "Agree", "Neutral", "Agree", "Strongly Disagree", "Disagree",
+        "Strongly Agree", "Strongly Agree", "Agree", "Neutral", "Agree", "Neutral", "Neutral",
+        "Disagree", "Strongly Disagree",
+        "Strongly Agree", "Agree", "Strongly Agree", "Agree", "Agree", "Agree", "Neutral",
+        "Strongly Disagree",
+        "Strongly Agree", "Strongly Agree", "Agree",
+        "Strongly Agree", "Strongly Agree", "Agree", "Strongly Agree", "Agree", "Agree",
+        "Agree", "Strongly Agree"
     )
 )
 
